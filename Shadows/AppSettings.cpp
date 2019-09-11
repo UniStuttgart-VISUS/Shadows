@@ -23,7 +23,7 @@ static const char* CascadeSelectionModesLabels[2] =
     "Projection",
 };
 
-static const char* ShadowModeLabels[9] =
+static const char* ShadowModeLabels[10] =
 {
     "Fixed Size PCF",
     "Grid PCF",
@@ -34,6 +34,7 @@ static const char* ShadowModeLabels[9] =
     "EVSM 4 Component",
     "MSM Hamburger",
     "MSM Hausdorff",
+    "IZB Shadows",
 };
 
 static const char* ShadowMapSizeLabels[3] =
@@ -200,7 +201,7 @@ namespace AppSettings
         CascadeSelectionMode.Initialize(tweakBar, "CascadeSelectionMode", "CascadeControls", "Cascade Selection Mode", "Controls how cascades are selected per-pixel in the shader", CascadeSelectionModes::SplitDepth, 2, CascadeSelectionModesLabels);
         Settings.AddSetting(&CascadeSelectionMode);
 
-        ShadowMode.Initialize(tweakBar, "ShadowMode", "Shadows", "Shadow Mode", "The shadow mapping technique to use", ShadowMode::FixedSizePCF, 9, ShadowModeLabels);
+        ShadowMode.Initialize(tweakBar, "ShadowMode", "Shadows", "Shadow Mode", "The shadow mapping technique to use", ShadowMode::FixedSizePCF, 10, ShadowModeLabels);
         Settings.AddSetting(&ShadowMode);
 
         ShadowMapSize.Initialize(tweakBar, "ShadowMapSize", "Shadows", "Shadow Map Size", "The size of the shadow map", ShadowMapSize::SMSize2048, 3, ShadowMapSizeLabels);
