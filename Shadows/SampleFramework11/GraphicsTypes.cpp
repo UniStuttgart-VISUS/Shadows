@@ -82,7 +82,7 @@ void RenderTarget2D::Initialize(ID3D11Device* device,
             {
                 rtDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2DMS;
             }
-            else
+			else
             {
                 rtDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
                 rtDesc.Texture2D.MipSlice = 0;
@@ -167,6 +167,32 @@ void RenderTarget2D::Initialize(ID3D11Device* device,
     if(createUAV)
         DXCall(device->CreateUnorderedAccessView(Texture, nullptr, &UAView));
 };
+
+// == VertexBuffer ================================================================================
+// A simple vertex buffer to store position information 
+// 
+SimpleVertex::SimpleVertex() : Pos(XMFLOAT3(0.0f,0.0f,0.0f)) 
+{
+
+}
+
+void SimpleVertex::Initialize(
+		ID3D11Device* device,
+		uint32 arraySize)
+{
+
+	D3D11_BUFFER_DESC bufferDesc;
+	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
+	bufferDesc.ByteWidth = sizeof(SimpleVertex) * 3;
+	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	bufferDesc.CPUAccessFlags = 0;
+	bufferDesc.MiscFlags = 0;
+	arraySize = 0;
+
+	ID3D11Buffer* buffer;
+
+	DXCall(device->CreateBuffer(&bufferDesc, nullptr, &buffer));
+}
 
 // == DepthStencilBuffer ==========================================================================
 
