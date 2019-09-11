@@ -50,13 +50,16 @@ struct RenderTarget2D
                         bool32 cubeMap = false);
 };
 
-struct SimpleVertex
+struct SimpleVertexBuffer
 {
 	XMFLOAT3 Pos;
+	uint32 Width;
+	uint32 Height;
+	uint32 ArraySize;
 
-	SimpleVertex();
+	SimpleVertexBuffer();
 
-	void Initialize(ID3D11Device* device, uint32 arraySize);
+	void Initialize(ID3D11Device* device, uint32 width, uint32 height, uint32 arraySize);
 };
 
 struct DepthStencilBuffer

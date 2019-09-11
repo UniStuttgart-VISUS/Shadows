@@ -171,25 +171,38 @@ void RenderTarget2D::Initialize(ID3D11Device* device,
 // == VertexBuffer ================================================================================
 // A simple vertex buffer to store position information 
 // 
-SimpleVertex::SimpleVertex() : Pos(XMFLOAT3(0.0f,0.0f,0.0f)) 
+SimpleVertexBuffer::SimpleVertexBuffer() : Pos(XMFLOAT3(0.0f, 0.0f, 0.0f)),
+											Width(0),
+											Height(0),
+											ArraySize(0)
+												
 {
 
 }
 
-void SimpleVertex::Initialize(
+void SimpleVertexBuffer::Initialize(
 		ID3D11Device* device,
-		uint32 arraySize)
+		uint32 width,
+		uint32 height,
+		uint32 arraySize
+		)
 {
+
+	Width = width;
+	Height = height;
+	ArraySize = arraySize;
 
 	D3D11_BUFFER_DESC bufferDesc;
 	bufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	bufferDesc.ByteWidth = sizeof(SimpleVertex) * 3;
+	bufferDesc.ByteWidth = sizeof(SimpleVertexBuffer) * 3;
 	bufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 	bufferDesc.CPUAccessFlags = 0;
 	bufferDesc.MiscFlags = 0;
 	arraySize = 0;
 
 	ID3D11Buffer* buffer;
+
+
 
 	DXCall(device->CreateBuffer(&bufferDesc, nullptr, &buffer));
 }

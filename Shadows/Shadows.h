@@ -41,6 +41,7 @@ protected:
     DepthStencilBuffer depthBuffer;
     RenderTarget2D colorTarget;
     RenderTarget2D resolveTarget;
+	SimpleVertexBuffer vertexBuffer;
 
     // Model
     Model models[uint64(Scene::NumValues)];

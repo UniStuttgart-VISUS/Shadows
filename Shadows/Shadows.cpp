@@ -138,6 +138,8 @@ void ShadowsApp::CreateRenderTargets()
     const uint32 MSAALevel = 4;
     colorTarget.Initialize(device, width, height, DXGI_FORMAT_R16G16B16A16_FLOAT, 1, MSAALevel, 0);
     depthBuffer.Initialize(device, width, height, DXGI_FORMAT_D24_UNORM_S8_UINT, true, MSAALevel, 0);
+	vertexBuffer.Initialize(device, width, height,0);
+	
 
     if(MSAALevel > 1)
         resolveTarget.Initialize(device, width, height, DXGI_FORMAT_R16G16B16A16_FLOAT, 1, 1, 0);
