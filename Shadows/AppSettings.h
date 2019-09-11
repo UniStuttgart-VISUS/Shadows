@@ -49,6 +49,7 @@ enum class ShadowMode
     EVSM4 = 6,
     MSMHamburger = 7,
     MSMHausdorff = 8,
+    IZBShadows = 9,
 
     NumValues
 };

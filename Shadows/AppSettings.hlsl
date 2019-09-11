@@ -53,6 +53,7 @@ static const int ShadowMode_EVSM2 = 5;
 static const int ShadowMode_EVSM4 = 6;
 static const int ShadowMode_MSMHamburger = 7;
 static const int ShadowMode_MSMHausdorff = 8;
+static const int ShadowMode_IZBShadows = 9;
 
 static const int ShadowMapSize_SMSize512 = 0;
 static const int ShadowMapSize_SMSize1024 = 1;

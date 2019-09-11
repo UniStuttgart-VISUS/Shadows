@@ -328,6 +328,9 @@ void DepthStencilBuffer::Initialize(ID3D11Device* device,
     Format = format;
     ArraySize = arraySize;
 }
+// == IndexBuffer ==========================================================================
+//TODO
+
 
 // == RWBuffer ====================================================================================
 

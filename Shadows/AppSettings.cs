@@ -26,6 +26,9 @@ enum ShadowMode
 
     [EnumLabel("MSM Hausdorff")]
     MSMHausdorff,
+
+    [EnumLabel("IZB Shadows")]
+    IZBShadows,
 }
 
 enum Scene
