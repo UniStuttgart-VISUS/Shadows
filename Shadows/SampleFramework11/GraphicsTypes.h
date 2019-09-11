@@ -76,6 +76,14 @@ struct DepthStencilBuffer
                         uint32 arraySize = 1);
 };
 
+//Index Buffer (used for irregular z-Buffer)
+struct IndexBuffer
+{
+//TODO
+
+
+};
+
 struct RWBuffer
 {
     ID3D11BufferPtr Buffer;
