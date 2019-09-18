@@ -86,6 +86,7 @@ static const char* ShadowAnisotropyLabels[5] =
 namespace AppSettings
 {
 	BoolSetting DebugView;
+	BoolSetting ShadowMapDebugView;
     SceneSetting CurrentScene;
     BoolSetting AnimateLight;
     DirectionSetting LightDirection;
@@ -138,6 +139,9 @@ namespace AppSettings
     void Initialize(ID3D11Device* device)
     {
         TwBar* tweakBar = Settings.TweakBar();
+
+		ShadowMapDebugView.Initialize(tweakBar, "ShadowMapDebugView","Debug", "ShadowMapDebug", "Activate to render the Shadow Map on screen", false);
+		Settings.AddSetting(&ShadowMapDebugView);
 
 		DebugView.Initialize(tweakBar, "DebugView", "Debug", "DebugView", "Activate to render only depth map", false);
 		Settings.AddSetting(&DebugView);

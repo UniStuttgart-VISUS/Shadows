@@ -245,6 +245,7 @@ void ShadowsApp::Render(const Timer& timer)
 	//DEBUG 
 	if (AppSettings::DebugView) {
 		 postProcessor.DrawDepthBuffer(depthBuffer, deviceManager.BackBuffer());
+		 
 	}
     ID3D11RenderTargetView* renderTargets[1] = { deviceManager.BackBuffer() };
     context->OMSetRenderTargets(1, renderTargets, NULL);
@@ -260,7 +261,8 @@ void ShadowsApp::Render(const Timer& timer)
 
     //$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-    /*spriteRenderer.Begin(context, SpriteRenderer::Linear);
+	if(AppSettings::ShadowMapDebugView){
+    spriteRenderer.Begin(context, SpriteRenderer::Linear);
 
     ID3D11ShaderResourceView* srv =  meshRenderer.ShadowMap().SRView;
     D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
@@ -271,7 +273,8 @@ void ShadowsApp::Render(const Timer& timer)
 
     spriteRenderer.Render(newSrv, Float4x4());
 
-    spriteRenderer.End();*/
+    spriteRenderer.End();
+	}
 
     RenderHUD();
 }
@@ -316,7 +319,7 @@ void ShadowsApp::RenderMainPass()
 
 	
 	
-	if(!AppSettings::DebugView){
+	if(!(AppSettings::DebugView||AppSettings::ShadowMapDebugView)){
 
     if(AppSettings::AutoComputeDepthBounds)
         meshRenderer.ReduceDepth(context, depthBuffer.SRView, camera);
