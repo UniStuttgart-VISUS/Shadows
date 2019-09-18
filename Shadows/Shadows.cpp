@@ -319,7 +319,7 @@ void ShadowsApp::RenderMainPass()
 
 	
 	
-	if(!(AppSettings::DebugView||AppSettings::ShadowMapDebugView)){
+	if(!(AppSettings::DebugView)){
 
     if(AppSettings::AutoComputeDepthBounds)
         meshRenderer.ReduceDepth(context, depthBuffer.SRView, camera);
