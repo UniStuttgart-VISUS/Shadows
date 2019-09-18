@@ -304,13 +304,21 @@ void ShadowsApp::RenderMainPass()
     characterWorld = characterWorld * characterOrientation;
     characterWorld.SetTranslation(CharacterPos);
 
-    {
-        ProfileBlock block(L"Depth Prepass");
-        if(AppSettings::GPUSceneSubmission)
-            meshRenderer.RenderDepthGPU(context, camera, meshWorld, characterWorld, false);
-        else
-            meshRenderer.RenderDepthCPU(context, camera, meshWorld, characterWorld, false);
-    }
+	{
+		ProfileBlock block(L"Depth Prepass");
+		if (AppSettings::GPUSceneSubmission)
+			meshRenderer.RenderDepthGPU(context, camera, meshWorld, characterWorld, false);
+		else
+			meshRenderer.RenderDepthCPU(context, camera, meshWorld, characterWorld, false);
+	}
+
+	if (AppSettings::DebugView) {
+		// DEBUG VIEW
+
+		// postProcessor.DrawDepthBuffer(depthBuffer, deviceManager.BackBuffer());
+
+	}
+	else {
 
     if(AppSettings::AutoComputeDepthBounds)
         meshRenderer.ReduceDepth(context, depthBuffer.SRView, camera);
@@ -329,6 +337,8 @@ void ShadowsApp::RenderMainPass()
     meshRenderer.Render(context, camera, meshWorld, characterWorld);
 
     skybox.RenderSky(context, lightDir, true, camera.ViewMatrix(), camera.ProjectionMatrix());
+	}
+    
 }
 
 void ShadowsApp::RenderHUD()

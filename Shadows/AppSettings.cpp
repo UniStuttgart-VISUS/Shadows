@@ -85,6 +85,7 @@ static const char* ShadowAnisotropyLabels[5] =
 
 namespace AppSettings
 {
+	BoolSetting DebugView;
     SceneSetting CurrentScene;
     BoolSetting AnimateLight;
     DirectionSetting LightDirection;
@@ -137,6 +138,9 @@ namespace AppSettings
     void Initialize(ID3D11Device* device)
     {
         TwBar* tweakBar = Settings.TweakBar();
+
+		DebugView.Initialize(tweakBar, "DebugView", "Debug", "DebugView", "Activate to render only depth map", false);
+		Settings.AddSetting(&DebugView);
 
         CurrentScene.Initialize(tweakBar, "CurrentScene", "SceneControls", "Current Scene", "The scene to render", Scene::PowerPlant, 3, SceneLabels);
         Settings.AddSetting(&CurrentScene);

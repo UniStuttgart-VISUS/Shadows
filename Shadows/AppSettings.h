@@ -128,6 +128,7 @@ typedef EnumSettingT<ShadowAnisotropy> ShadowAnisotropySetting;
 
 namespace AppSettings
 {
+	extern BoolSetting DebugView;
     extern SceneSetting CurrentScene;
     extern BoolSetting AnimateLight;
     extern DirectionSetting LightDirection;
