@@ -14,6 +14,8 @@
 //=================================================================================================
 // Constants
 //=================================================================================================
+
+
 cbuffer PPConstants : register(b1)
 {
     float BloomThreshold;
@@ -22,6 +24,7 @@ cbuffer PPConstants : register(b1)
     float Tau;
     float TimeDelta;
     float KeyValue;
+    float4x4 ViewProjInv;
 };
 
 //=================================================================================================
@@ -191,4 +194,16 @@ float4 DrawDepth(in PSInput input) : SV_Target
 float4 DrawDepthMSAA(in PSInput input) : SV_Target
 {
     return float4(saturate(DepthTextureMSAA.Load(input.PositionSS.xy, 0).xxx - 0.95f) * 20.0f, 1.0f);
+}
+
+float4 visualizeReconstructedPosition(in PSInput input) : SV_TARGET
+{
+    float depth = DepthTextureMSAA.Load(input.PositionSS.xy, 0).x;
+    float4 samplePosition;
+    samplePosition.xy = input.TexCoord * 2.0f - 1.0f;
+    samplePosition.z = depth * 2.0f - 1.0f;
+    samplePosition.w = 1.0f;
+    samplePosition = mul(ViewProjInv, samplePosition);
+    samplePosition /= samplePosition.w;
+    return float4(samplePosition.xyz, 1.0f);
 }

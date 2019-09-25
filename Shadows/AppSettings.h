@@ -126,10 +126,21 @@ enum class ShadowAnisotropy
 
 typedef EnumSettingT<ShadowAnisotropy> ShadowAnisotropySetting;
 
+enum class DebugMode {
+	None = 0,
+	DepthOnly = 1,
+	Position = 2,
+	VisualizeShadowMap = 3,
+
+	NumValues
+};
+
+typedef EnumSettingT<DebugMode> DebugModeSetting;
+
 namespace AppSettings
 {
-	extern BoolSetting DebugView;
-	extern BoolSetting ShadowMapDebugView;
+	extern DebugModeSetting DebugMode;
+
     extern SceneSetting CurrentScene;
     extern BoolSetting AnimateLight;
     extern DirectionSetting LightDirection;

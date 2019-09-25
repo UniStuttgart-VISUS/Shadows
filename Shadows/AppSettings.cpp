@@ -83,10 +83,16 @@ static const char* ShadowAnisotropyLabels[5] =
     "16x",
 };
 
+static const char* DebugModeLabels[4] = {
+	"None",
+	"DepthOnly",
+	"Position",
+	"VisualizeShadowMap",
+};
+
 namespace AppSettings
 {
-	BoolSetting DebugView;
-	BoolSetting ShadowMapDebugView;
+	DebugModeSetting DebugMode;
     SceneSetting CurrentScene;
     BoolSetting AnimateLight;
     DirectionSetting LightDirection;
@@ -140,11 +146,8 @@ namespace AppSettings
     {
         TwBar* tweakBar = Settings.TweakBar();
 
-		ShadowMapDebugView.Initialize(tweakBar, "ShadowMapDebugView","Debug", "ShadowMapDebug", "Activate to render the Shadow Map on screen", false);
-		Settings.AddSetting(&ShadowMapDebugView);
-
-		DebugView.Initialize(tweakBar, "DebugView", "Debug", "DebugView", "Activate to render only depth map", false);
-		Settings.AddSetting(&DebugView);
+		DebugMode.Initialize(tweakBar, "DebugMode", "Debug", "DebugMode", "The debug mode to display", DebugMode::None, 4, DebugModeLabels);
+		Settings.AddSetting(&DebugMode);
 
         CurrentScene.Initialize(tweakBar, "CurrentScene", "SceneControls", "Current Scene", "The scene to render", Scene::PowerPlant, 3, SceneLabels);
         Settings.AddSetting(&CurrentScene);

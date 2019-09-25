@@ -36,6 +36,7 @@ void PostProcessor::Initialize(ID3D11Device* device)
     adaptLuminance = CompilePSFromFile(device, L"PostProcessing.hlsl", "AdaptLuminance");
     drawDepth = CompilePSFromFile(device, L"PostProcessing.hlsl", "DrawDepth");
     drawDepthMSAA = CompilePSFromFile(device, L"PostProcessing.hlsl", "DrawDepthMSAA");
+	visualizeReconstructedPosition = CompilePSFromFile(device, L"PostProcessing.hlsl", "visualizeReconstructedPosition");
 
     // Create average luminance calculation targets
     currLumTarget = 0;
@@ -151,4 +152,9 @@ void PostProcessor::DrawDepthBuffer(DepthStencilBuffer& depthBuffer, ID3D11Rende
         PostProcess(depthBuffer.SRView, rt, drawDepthMSAA, L"Draw Depth");
     else
         PostProcess(depthBuffer.SRView, rt, drawDepth, L"Draw Depth");
+}
+
+void PostProcessor::VisualizePosition(DepthStencilBuffer& depthBuffer, ID3D11RenderTargetView* rt) {
+	Assert_(depthBuffer.SRView != nullptr);
+	PostProcess(depthBuffer.SRView, rt, visualizeReconstructedPosition, L"Visualize Position");
 }
