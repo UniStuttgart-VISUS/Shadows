@@ -353,8 +353,16 @@ void ShadowsApp::RenderHUD()
     PIXEvent event(L"HUD Pass");
 
     spriteRenderer.Begin(deviceManager.ImmediateContext(), SpriteRenderer::Point);
+	
+	Float4x4 transform = Float4x4::TranslationMatrix(Float3(25.0f, 25.0f, 0.0f));
+	wstring posText(L"Camera Position: ");
+	posText += L"x: "+ ToString(camera.Position().x) +L" ";
+	posText += L"y: "+ToString(camera.Position().y) + L" ";
+	posText += L"z: "+ToString(camera.Position().z);
+	spriteRenderer.RenderText(font, posText.c_str(), transform, XMFLOAT4(1, 1, 0, 1));
+	
 
-    Float4x4 transform = Float4x4::TranslationMatrix(Float3(25.0f, 25.0f, 0.0f));
+	transform._42 += 25.0f;
     wstring fpsText(L"FPS: ");
     fpsText += ToString(fps) + L" (" + ToString(1000.0f / fps) + L"ms)";
     spriteRenderer.RenderText(font, fpsText.c_str(), transform, XMFLOAT4(1, 1, 0, 1));
