@@ -195,19 +195,18 @@ float4 DrawDepth(in PSInput input) : SV_Target
 
 float4 DrawDepthMSAA(in PSInput input) : SV_Target
 {
-  
    return float4(saturate(DepthTextureMSAA.Load(input.PositionSS.xy, 0).xxx - 0.95f) * 20.0f, 1.0f);
-
 }
 
 float4 visualizeReconstructedPosition(in PSInput input) : SV_TARGET
 {
-    float z = DepthTextureMSAA.Load(input.PositionSS.xy, 0).x * 2.0f - 1.0f;
+	//Depth Transformation
+    float depth = DepthTextureMSAA.Load(input.PositionSS.xy, 0).x * 2.0f - 1.0f;
 
     // Calcuate Clip Space
-    float4 clipSpacePosition = float4(input.TexCoord.xy * 2.0f - 1.0f, z, 1.0f);
+    float4 clipSpacePosition = float4(input.TexCoord.xy * 2.0f - 1.0f, depth, 1.0f);
    
-    // Transfromtation to ViewSpace
+    // Transformation to ViewSpace
     float4 viewSpacePosition = mul(projectionInv, clipSpacePosition);
 
     // Perspective division
@@ -216,5 +215,5 @@ float4 visualizeReconstructedPosition(in PSInput input) : SV_TARGET
     // Transformation to world space
     float4 worldSpacePosition = mul(viewInv, viewSpacePosition);
 
-    return float4(worldSpacePosition.xyz / 20.0f, 1.0f);
+    return float4(worldSpacePosition.xyz / 10.0f, 1.0f);
 }
