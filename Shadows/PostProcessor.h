@@ -16,6 +16,7 @@
 #include "SampleFramework11/DeviceStates.h"
 
 #include "AppSettings.h"
+#include "SampleFramework11/Camera.h"
 
 using namespace SampleFramework11;
 
@@ -26,6 +27,8 @@ public:
 
     struct Constants
     {
+		Float4x4 viewInv;
+		Float4x4 projectionInv;
         float BloomThreshold;
         float BloomMagnitude;
         float BloomBlurSigma;

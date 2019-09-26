@@ -231,6 +231,8 @@ void ShadowsApp::Render(const Timer& timer)
     // Kick off post-processing
     D3DPERF_BeginEvent(0xFFFFFFFF, L"Post Processing");
     PostProcessor::Constants constants;
+	constants.projectionInv = Float4x4::Invert(camera.ProjectionMatrix());
+	constants.viewInv = Float4x4::Invert(camera.ViewMatrix());
     constants.BloomThreshold = AppSettings::BloomThreshold;
     constants.BloomMagnitude = AppSettings::BloomMagnitude;
     constants.BloomBlurSigma = AppSettings::BloomBlurSigma;
