@@ -240,14 +240,18 @@ void ShadowsApp::Render(const Timer& timer)
     constants.KeyValue = AppSettings::KeyValue;
     constants.TimeDelta = timer.DeltaSecondsF();
 
+	constants.ViewProjInv = Float4x4::Invert(camera.ViewProjectionMatrix());
+
     postProcessor.SetConstants(constants);
     postProcessor.Render(context, resolveTarget.SRView, deviceManager.BackBuffer());
     D3DPERF_EndEvent();
 
 	//DEBUG 
-	if (AppSettings::DebugView) {
-		 postProcessor.DrawDepthBuffer(depthBuffer, deviceManager.BackBuffer());
-		 
+	if (AppSettings::DebugMode == DebugMode::DepthOnly) {
+		 postProcessor.DrawDepthBuffer(depthBuffer, deviceManager.BackBuffer());		 
+	}
+	if (AppSettings::DebugMode == DebugMode::Position) {
+		postProcessor.VisualizePosition(depthBuffer, deviceManager.BackBuffer());
 	}
     ID3D11RenderTargetView* renderTargets[1] = { deviceManager.BackBuffer() };
     context->OMSetRenderTargets(1, renderTargets, NULL);
@@ -263,7 +267,7 @@ void ShadowsApp::Render(const Timer& timer)
 
     //$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
 
-	if(AppSettings::ShadowMapDebugView){
+	if(AppSettings::DebugMode == DebugMode::VisualizeShadowMap){
     spriteRenderer.Begin(context, SpriteRenderer::Linear);
 
     ID3D11ShaderResourceView* srv =  meshRenderer.ShadowMap().SRView;
@@ -321,7 +325,7 @@ void ShadowsApp::RenderMainPass()
 
 	
 	
-	if(!(AppSettings::DebugView)){
+	if(AppSettings::DebugMode == DebugMode::None){
 
     if(AppSettings::AutoComputeDepthBounds)
         meshRenderer.ReduceDepth(context, depthBuffer.SRView, camera);

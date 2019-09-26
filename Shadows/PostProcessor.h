@@ -35,6 +35,7 @@ public:
         float Tau;
         float TimeDelta;
         float KeyValue;
+		Float4x4 ViewProjInv;
     };
 
     void Initialize(ID3D11Device* device);
@@ -45,6 +46,8 @@ public:
     void AfterReset(uint32 width, uint32 height);
 
     void DrawDepthBuffer(DepthStencilBuffer& depthBuffer, ID3D11RenderTargetView* rt);
+
+	void VisualizePosition(DepthStencilBuffer& depthBuffer, ID3D11RenderTargetView* rt);
 
     const Constants& GetConstants() const { return constantBuffer.Data; }
 
@@ -64,6 +67,7 @@ protected:
     PixelShaderPtr adaptLuminance;
     PixelShaderPtr drawDepth;
     PixelShaderPtr drawDepthMSAA;
+	PixelShaderPtr visualizeReconstructedPosition;
 
     RenderTarget2D adaptedLuminance[2];
     RenderTarget2D exposureMap;
