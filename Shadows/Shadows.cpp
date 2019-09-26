@@ -182,7 +182,7 @@ void ShadowsApp::Update(const Timer& timer)
     camera.SetPosition(camPos);
 
     // Rotate the camera with the mouse
-    if(mouseState.RButton.Pressed && mouseState.IsOverWindow)
+    if((mouseState.LButton.Pressed || mouseState.RButton.Pressed)  && mouseState.IsOverWindow)
     {
         float xRot = camera.XRotation();
         float yRot = camera.YRotation();
@@ -231,7 +231,7 @@ void ShadowsApp::Render(const Timer& timer)
     // Kick off post-processing
     D3DPERF_BeginEvent(0xFFFFFFFF, L"Post Processing");
     PostProcessor::Constants constants;
-	constants.projectionInv = Float4x4::Invert(camera.ProjectionMatrix());
+	constants.projectionInv = Float4x4::Transpose(Float4x4::Invert(camera.ProjectionMatrix()));
 	constants.viewInv = Float4x4::Invert(camera.ViewMatrix());
     constants.BloomThreshold = AppSettings::BloomThreshold;
     constants.BloomMagnitude = AppSettings::BloomMagnitude;
@@ -356,7 +356,7 @@ void ShadowsApp::RenderHUD()
 	
 	Float4x4 transform = Float4x4::TranslationMatrix(Float3(25.0f, 25.0f, 0.0f));
 	wstring posText(L"Camera Position: ");
-	posText += L"x: "+ ToString(camera.Position().x) +L" ";
+	posText += L"x "+ ToString(camera.Position().x) +L" ";
 	posText += L"y: "+ToString(camera.Position().y) + L" ";
 	posText += L"z: "+ToString(camera.Position().z);
 	spriteRenderer.RenderText(font, posText.c_str(), transform, XMFLOAT4(1, 1, 0, 1));
