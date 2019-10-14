@@ -18,7 +18,7 @@
 #include "SampleFramework11/Camera.h"
 #include "SampleFramework11/SH.h"
 #include "SampleFramework11/ShaderCompilation.h"
-
+#include "ComputeShader.h"
 #include "AppSettings.h"
 #include "SharedConstants.h"
 
