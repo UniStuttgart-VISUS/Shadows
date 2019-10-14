@@ -1606,3 +1606,34 @@ void MeshRenderer::RenderShadowMapGPU(ID3D11DeviceContext* context, const Camera
             ConvertToVSM(context, cascadeIdx, Float3(1.0f, 1.0f, 1.0f), Float3(1.0f, 1.0f, 1.0f));
     }
 }
+
+// NEW
+void MeshRenderer::RenderIZB(ID3D11DeviceContext* context, const Camera& camera,
+	const Float4x4& world, const Float4x4& characterWorld)
+{
+	PIXEvent event(L"Mesh Shadow Map Rendering(GPU)");
+	ProfileBlock block(L"Shadow Map Rendering/Setup");
+
+	computeshader = CompileCSFromFile(device, L"ComputeShader.hlsl", "main", "cs_5_0");
+	//DXCall(device -> CreateComputeShader(ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &this->computeshader));
+	//hr = this->device->CreateComputeShader(::ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &this->computeshader);
+	
+	/*// Run the cascade setup shader on the GPU
+	shadowSetupConstants.Data.GlobalShadowMatrix = Float4x4::Transpose(shadowMatrix);
+	shadowSetupConstants.Data.ViewProjInv = Float4x4::Transpose(Float4x4::Invert(camera.ViewProjectionMatrix()));
+	shadowSetupConstants.Data.CameraRight = camera.WorldMatrix().Right();
+	shadowSetupConstants.Data.CameraNearClip = camera.NearClip();
+	shadowSetupConstants.Data.CameraFarClip = camera.FarClip();
+	shadowSetupConstants.ApplyChanges(context);
+	shadowSetupConstants.SetCS(context, 0);**/
+
+	SetCSShader(context, computeshader);
+	//SetCSInputs(context, depthReductionTargets[depthReductionTargets.size() - 1].SRView);
+	//SetCSOutputs(context, cascadeMatrixBuffer.UAView, cascadeSplitBuffer.UAView,
+	//	cascadeOffsetBuffer.UAView, cascadeScaleBuffer.UAView,
+	//	cascadePlanesBuffer.UAView);
+	context->Dispatch(1, 1, 1);
+	//ClearCSInputs(context);
+	//ClearCSOutputs(context);
+}
+

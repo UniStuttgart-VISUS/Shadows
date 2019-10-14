@@ -86,6 +86,9 @@ public:
     void RenderShadowMapGPU(ID3D11DeviceContext* context, const Camera& camera,
                             const Float4x4& world, const Float4x4& characterWorld);
 
+	void RenderIZB(ID3D11DeviceContext* context, const Camera& camera,
+		const Float4x4& world, const Float4x4& characterWorld);
+
     void Update();
 
     void CreateReductionTargets(uint32 width, uint32 height);
@@ -174,6 +177,8 @@ protected:
     StructuredBuffer cascadeOffsetBuffer;
     StructuredBuffer cascadeScaleBuffer;
     StructuredBuffer cascadePlanesBuffer;
+
+	ComputeShaderPtr computeshader;
 
     // Constant buffers
     struct DepthOnlyConstants
