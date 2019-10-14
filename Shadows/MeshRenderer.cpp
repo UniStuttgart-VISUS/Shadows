@@ -1615,8 +1615,7 @@ void MeshRenderer::RenderIZB(ID3D11DeviceContext* context, const Camera& camera,
 	ProfileBlock block(L"Shadow Map Rendering/Setup");
 
 	computeshader = CompileCSFromFile(device, L"ComputeShader.hlsl", "main", "cs_5_0");
-	//DXCall(device -> CreateComputeShader(ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &this->computeshader));
-	//hr = this->device->CreateComputeShader(::ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &this->computeshader);
+	//DXCall(this -> device -> CreateComputeShader(ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &this->computeshader));
 	
 	/*// Run the cascade setup shader on the GPU
 	shadowSetupConstants.Data.GlobalShadowMatrix = Float4x4::Transpose(shadowMatrix);
