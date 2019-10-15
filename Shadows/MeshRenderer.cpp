@@ -383,6 +383,8 @@ void MeshRenderer::LoadShaders()
     depthReductionCS = CompileCSFromFile(device, L"DepthReduction.hlsl", "DepthReductionCS",
                                          "cs_5_0", opts);
 
+	computeshader = CompileCSFromFile(device, L"ComputeShader.hlsl", "main", "cs_5_0");
+
     clearArgsBuffer = CompileCSFromFile(device, L"GPUBatch.hlsl", "ClearArgsBuffer");
     cullDrawCalls = CompileCSFromFile(device, L"GPUBatch.hlsl", "CullDrawCalls");
     batchDrawCalls = CompileCSFromFile(device, L"GPUBatch.hlsl", "BatchDrawCalls");
@@ -558,6 +560,8 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
     reductionConstants.Initialize(device);
     gpuBatchConstants.Initialize(device, true);
     shadowSetupConstants.Initialize(device);
+
+	computeShaderConstants.Initialize(device);
 
     tempViewProjBuffer.Initialize(device);
     tempFrustumPlanesBuffer.Initialize(device);
@@ -1608,32 +1612,66 @@ void MeshRenderer::RenderShadowMapGPU(ID3D11DeviceContext* context, const Camera
 }
 
 // NEW
-void MeshRenderer::RenderIZB(ID3D11DeviceContext* context, const Camera& camera,
-	const Float4x4& world, const Float4x4& characterWorld)
+void MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer, const Camera& camera)
 {
-	PIXEvent event(L"Mesh Shadow Map Rendering(GPU)");
-	ProfileBlock block(L"Shadow Map Rendering/Setup");
+	//PIXEvent event(L"IZB Rendering");
+	//ProfileBlock block(L"IZB Rendering/Setup");
 
-	computeshader = CompileCSFromFile(device, L"ComputeShader.hlsl", "main", "cs_5_0");
+	// QUERY
+	D3D11_QUERY_DESC queryDesc;
+	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
+	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
+	ID3D11Query* queryObj;
+
+	DXCall( device->CreateQuery(&queryDesc, &queryObj));
+	
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC SRVdesc;
+	depthBuffer.SRView->GetDesc(&SRVdesc);
+
+	// SET CONSTANTS
+	computeShaderConstants.Data.viewInv = Float4x4::Invert(camera.ViewMatrix());
+	computeShaderConstants.Data.projInv = Float4x4::Invert(camera.ProjectionMatrix());
+
+	computeShaderConstants.ApplyChanges(context);
+	computeShaderConstants.SetCS(context, 1);
+
+	
 	ID3D11ComputeShader* computeshader = nullptr;
 	DXCall(device -> CreateComputeShader(::ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &computeshader));
 	
-	/*// Run the cascade setup shader on the GPU
-	shadowSetupConstants.Data.GlobalShadowMatrix = Float4x4::Transpose(shadowMatrix);
-	shadowSetupConstants.Data.ViewProjInv = Float4x4::Transpose(Float4x4::Invert(camera.ViewProjectionMatrix()));
-	shadowSetupConstants.Data.CameraRight = camera.WorldMatrix().Right();
-	shadowSetupConstants.Data.CameraNearClip = camera.NearClip();
-	shadowSetupConstants.Data.CameraFarClip = camera.FarClip();
-	shadowSetupConstants.ApplyChanges(context);
-	shadowSetupConstants.SetCS(context, 0);**/
 
 	SetCSShader(context, computeshader);
-	//SetCSInputs(context, depthReductionTargets[depthReductionTargets.size() - 1].SRView);
-	//SetCSOutputs(context, cascadeMatrixBuffer.UAView, cascadeSplitBuffer.UAView,
-	//	cascadeOffsetBuffer.UAView, cascadeScaleBuffer.UAView,
-	//	cascadePlanesBuffer.UAView);
-	context->Dispatch(1, 1, 1);
-	//ClearCSInputs(context);
-	//ClearCSOutputs(context);
+	SetCSInputs(context, depthBuffer.SRView);
+
+	// TODO
+	//SetCSOutputs(context, );
+
+
+	uint32 dispatchX = depthBuffer.Width / 16;
+	uint32 dispatchY = depthBuffer.Height / 16;
+
+	context->Dispatch(dispatchX, dispatchY, 1);
+
+	context->End(queryObj);
+
+
+	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+
+	ClearCSInputs(context);
+	ClearCSOutputs(context);
+
+	/*
+	QUERY
+
+	D3D11_QUERY_DESC desc;
+	ZeroMemory(&desc, sizeof(D3D11_QUERY_DESC));
+	desc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
+	ID3D11Query* queryObj;
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC SRVdesc;
+	depthBuffer.SRView->GetDesc(&SRVdesc);
+	
+	*/
 }
 
