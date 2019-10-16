@@ -86,7 +86,7 @@ public:
 	void RenderShadowMapGPU(ID3D11DeviceContext* context, const Camera& camera,
 		const Float4x4& world, const Float4x4& characterWorld);
 
-	void RenderIZB(ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer, const Camera& camera);
+	ID3D11Texture2D* RenderIZB(ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer, const Camera& camera);
 
 	void Update();
 
@@ -256,4 +256,6 @@ protected:
 	ConstantBuffer<FrustumConstants> tempFrustumPlanesBuffer;
 
 	ConstantBuffer<ComputeShaderConstants> computeShaderConstants;
+	ID3D11UnorderedAccessView* UAView;
+
 };

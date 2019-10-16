@@ -382,7 +382,6 @@ void MeshRenderer::LoadShaders()
 
     depthReductionCS = CompileCSFromFile(device, L"DepthReduction.hlsl", "DepthReductionCS",
                                          "cs_5_0", opts);
-
 	computeshader = CompileCSFromFile(device, L"ComputeShader.hlsl", "main", "cs_5_0");
 
     clearArgsBuffer = CompileCSFromFile(device, L"GPUBatch.hlsl", "ClearArgsBuffer");
@@ -1612,55 +1611,72 @@ void MeshRenderer::RenderShadowMapGPU(ID3D11DeviceContext* context, const Camera
 }
 
 // NEW
-void MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer, const Camera& camera)
+ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer, const Camera& camera)
 {
-	//PIXEvent event(L"IZB Rendering");
-	//ProfileBlock block(L"IZB Rendering/Setup");
-
-	// QUERY
-	D3D11_QUERY_DESC queryDesc;
-	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
-	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
-	ID3D11Query* queryObj;
-
-	DXCall( device->CreateQuery(&queryDesc, &queryObj));
-	
-
-	D3D11_SHADER_RESOURCE_VIEW_DESC SRVdesc;
-	depthBuffer.SRView->GetDesc(&SRVdesc);
-
-	// SET CONSTANTS
+	///////////////////////////////////////////////////////////////////////////////////////////
+	// Constant Buffer Setup
 	computeShaderConstants.Data.viewInv = Float4x4::Invert(camera.ViewMatrix());
 	computeShaderConstants.Data.projInv = Float4x4::Invert(camera.ProjectionMatrix());
 
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);
 
-	
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	// Compute Shader
 	ID3D11ComputeShader* computeshader = nullptr;
 	DXCall(device -> CreateComputeShader(::ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &computeshader));
 	
+	// Compute Shader Input/Output
+	ID3D11Texture2D* renderTarget;
+	D3D11_TEXTURE2D_DESC renderTargetDesc;
+	ZeroMemory(&renderTargetDesc, sizeof(renderTargetDesc));
+	renderTargetDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	renderTargetDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	renderTargetDesc.Height = depthBuffer.Height;
+	renderTargetDesc.Width = depthBuffer.Width;
+	renderTargetDesc.ArraySize = 1;
+	renderTargetDesc.MipLevels = 1;
+	renderTargetDesc.SampleDesc.Count = 1;
+	renderTargetDesc.SampleDesc.Quality = 0;
+	renderTargetDesc.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&renderTargetDesc, nullptr, &renderTarget));
 
+	//Create UAV for Compute shader
+	D3D11_UNORDERED_ACCESS_VIEW_DESC uavCS;
+	ZeroMemory(&uavCS, sizeof(uavCS));
+	uavCS.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	uavCS.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	uavCS.Texture2D.MipSlice = 0;
+	DXCall(device->CreateUnorderedAccessView(renderTarget, &uavCS, &UAView));
+
+
+	//Setup for dispatch
 	SetCSShader(context, computeshader);
 	SetCSInputs(context, depthBuffer.SRView);
-
-	// TODO
-	//SetCSOutputs(context, );
-
-
+	context ->CSSetUnorderedAccessViews(0, 1, &UAView, nullptr);
 	uint32 dispatchX = depthBuffer.Width / 16;
 	uint32 dispatchY = depthBuffer.Height / 16;
-
 	context->Dispatch(dispatchX, dispatchY, 1);
 
+
+	///////////////////////////////////////////////////////////////////////////////////////////
+	// QUERY
+	D3D11_QUERY_DESC queryDesc;
+	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
+	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
+	ID3D11Query* queryObj;
+	DXCall(device->CreateQuery(&queryDesc, &queryObj));
 	context->End(queryObj);
-
-
 	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
-
+	
+	
+	//////////////////////////////////////////////////////////////////////////
+	// Cleanup
 	ClearCSInputs(context);
 	ClearCSOutputs(context);
 
+	return renderTarget;
 	/*
 	QUERY
 
