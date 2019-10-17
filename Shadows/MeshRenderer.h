@@ -69,7 +69,7 @@ public:
 
 	MeshRenderer();
 
-	void Initialize(ID3D11Device* device, ID3D11DeviceContext* context);
+	void Initialize(ID3D11Device* device, ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer);
 	void SetSceneMesh(ID3D11DeviceContext* context, Model* model, const Float4x4& world);
 	void SetCharacterMesh(ID3D11DeviceContext* context, Model* model, const Float4x4& world);
 
@@ -257,5 +257,9 @@ protected:
 
 	ConstantBuffer<ComputeShaderConstants> computeShaderConstants;
 	ID3D11UnorderedAccessView* UAView;
+	ID3D11Texture2D* renderTarget;
+	ID3D11Query* queryObj;
+	D3D11_QUERY_DESC queryDesc;
+
 
 };

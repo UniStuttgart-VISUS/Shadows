@@ -543,7 +543,7 @@ void MeshRenderer::SetCharacterMesh(ID3D11DeviceContext* context, Model* model, 
 }
 
 // Loads resources
-void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context)
+void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer)
 {
     this->device = device;
 
@@ -640,6 +640,39 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
     cascadePlanesBuffer.Initialize(device, sizeof(Float4), NumCascades * 6, true);
 
     CreateShadowMaps();
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+	// Compute Shader
+	ID3D11ComputeShader* computeshader = nullptr;
+	DXCall(device->CreateComputeShader(::ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &computeshader));
+
+	// Compute Shader Input/Output
+	ID3D11Texture2D* renderTarget;
+	D3D11_TEXTURE2D_DESC renderTargetDesc;
+	ZeroMemory(&renderTargetDesc, sizeof(renderTargetDesc));
+	renderTargetDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	renderTargetDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	renderTargetDesc.Height = 1280;	//TODO: should be depthBuffer.Height!!!
+	renderTargetDesc.Width = 720;	//TODO: should be depthBuffer.Width!!!
+	renderTargetDesc.ArraySize = 1;
+	renderTargetDesc.MipLevels = 1;
+	renderTargetDesc.SampleDesc.Count = 1;
+	renderTargetDesc.SampleDesc.Quality = 0;
+	renderTargetDesc.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&renderTargetDesc, nullptr, &renderTarget));
+
+	//Create UAV for Compute shader
+	D3D11_UNORDERED_ACCESS_VIEW_DESC uavCS;
+	ZeroMemory(&uavCS, sizeof(uavCS));
+	uavCS.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	uavCS.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	uavCS.Texture2D.MipSlice = 0;
+	DXCall(device->CreateUnorderedAccessView(renderTarget, &uavCS, &UAView));
+
+	//Setup for dispatch
+	SetCSShader(context, computeshader);
+	SetCSInputs(context, depthBuffer.SRView);
+	context->CSSetUnorderedAccessViews(0, 1, &UAView, nullptr);
 }
 
 // Performs frustum/sphere intersection tests for all MeshPart's
@@ -1621,44 +1654,9 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);
 
-
-	/////////////////////////////////////////////////////////////////////////////////////////////
-	// Compute Shader
-	ID3D11ComputeShader* computeshader = nullptr;
-	DXCall(device -> CreateComputeShader(::ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &computeshader));
-	
-	// Compute Shader Input/Output
-	ID3D11Texture2D* renderTarget;
-	D3D11_TEXTURE2D_DESC renderTargetDesc;
-	ZeroMemory(&renderTargetDesc, sizeof(renderTargetDesc));
-	renderTargetDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	renderTargetDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	renderTargetDesc.Height = depthBuffer.Height;
-	renderTargetDesc.Width = depthBuffer.Width;
-	renderTargetDesc.ArraySize = 1;
-	renderTargetDesc.MipLevels = 1;
-	renderTargetDesc.SampleDesc.Count = 1;
-	renderTargetDesc.SampleDesc.Quality = 0;
-	renderTargetDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&renderTargetDesc, nullptr, &renderTarget));
-
-	//Create UAV for Compute shader
-	D3D11_UNORDERED_ACCESS_VIEW_DESC uavCS;
-	ZeroMemory(&uavCS, sizeof(uavCS));
-	uavCS.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	uavCS.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	uavCS.Texture2D.MipSlice = 0;
-	DXCall(device->CreateUnorderedAccessView(renderTarget, &uavCS, &UAView));
-
-
-	//Setup for dispatch
-	SetCSShader(context, computeshader);
-	SetCSInputs(context, depthBuffer.SRView);
-	context ->CSSetUnorderedAccessViews(0, 1, &UAView, nullptr);
 	uint32 dispatchX = depthBuffer.Width / 16;
 	uint32 dispatchY = depthBuffer.Height / 16;
 	context->Dispatch(dispatchX, dispatchY, 1);
-
 
 	///////////////////////////////////////////////////////////////////////////////////////////
 	// QUERY
@@ -1669,7 +1667,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	DXCall(device->CreateQuery(&queryDesc, &queryObj));
 	context->End(queryObj);
 	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
-	
 	
 	//////////////////////////////////////////////////////////////////////////
 	// Cleanup

@@ -109,7 +109,7 @@ void ShadowsApp::Initialize()
 	wstring characterPath(L"..\\Content\\Models\\Soldier\\Soldier.sdkmesh");
 	characterMesh.CreateFromSDKMeshFile(device, characterPath.c_str());
 
-	meshRenderer.Initialize(device, deviceManager.ImmediateContext());
+	meshRenderer.Initialize(device, deviceManager.ImmediateContext(),depthBuffer);
 
 	ID3D11DeviceContext* context = deviceManager.ImmediateContext();
 
@@ -254,7 +254,9 @@ void ShadowsApp::Render(const Timer& timer)
 		postProcessor.VisualizePosition(depthBuffer, deviceManager.BackBuffer());
 	}
 	if (AppSettings::DebugMode == DebugMode::ComputeShader) {
-		meshRenderer.RenderIZB(context, depthBuffer, camera);
+		ID3D11Texture2D* test = meshRenderer.RenderIZB(context, depthBuffer, camera);
+		int bla = 0;
+		bla = bla + 1;
 	}
 	
 	ID3D11RenderTargetView* renderTargets[1] = { deviceManager.BackBuffer() };
