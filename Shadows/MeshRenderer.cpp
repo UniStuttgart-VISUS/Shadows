@@ -652,8 +652,8 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	ZeroMemory(&renderTargetDesc, sizeof(renderTargetDesc));
 	renderTargetDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	renderTargetDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	renderTargetDesc.Height = 1280;	//TODO: should be depthBuffer.Height!!!
-	renderTargetDesc.Width = 720;	//TODO: should be depthBuffer.Width!!!
+	renderTargetDesc.Height = 720;	//TODO: should be depthBuffer.Height!!!
+	renderTargetDesc.Width = 1280;	//TODO: should be depthBuffer.Width!!!
 	renderTargetDesc.ArraySize = 1;
 	renderTargetDesc.MipLevels = 1;
 	renderTargetDesc.SampleDesc.Count = 1;
@@ -669,10 +669,6 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	uavCS.Texture2D.MipSlice = 0;
 	DXCall(device->CreateUnorderedAccessView(renderTarget, &uavCS, &UAView));
 
-	//Setup for dispatch
-	SetCSShader(context, computeshader);
-	SetCSInputs(context, depthBuffer.SRView);
-	context->CSSetUnorderedAccessViews(0, 1, &UAView, nullptr);
 }
 
 // Performs frustum/sphere intersection tests for all MeshPart's
@@ -1654,6 +1650,12 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);
 
+
+
+	//Setup for dispatch
+	SetCSShader(context, computeshader);
+	SetCSInputs(context, depthBuffer.SRView);
+	context->CSSetUnorderedAccessViews(0, 1, &UAView, nullptr);
 	uint32 dispatchX = depthBuffer.Width / 16;
 	uint32 dispatchY = depthBuffer.Height / 16;
 	context->Dispatch(dispatchX, dispatchY, 1);
