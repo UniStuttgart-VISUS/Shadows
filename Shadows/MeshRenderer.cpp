@@ -669,6 +669,12 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	uavCS.Texture2D.MipSlice = 0;
 	DXCall(device->CreateUnorderedAccessView(renderTarget, &uavCS, &UAView));
 
+	///////////////////////////////////////////////////////////////////////////////////////////
+	// QUERY
+	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
+	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
+	DXCall(device->CreateQuery(&this->queryDesc, &this->queryObj));
+	context->End(queryObj);
 }
 
 // Performs frustum/sphere intersection tests for all MeshPart's
@@ -1648,11 +1654,10 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.Data.projInv = Float4x4::Invert(camera.ProjectionMatrix());
 	computeShaderConstants.Data.width = depthBuffer.Width;
 	computeShaderConstants.Data.height = depthBuffer.Height;
+	computeShaderConstants.Data.viewProj = MakeGlobalShadowMatrix(camera);
 
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);
-
-
 
 	//Setup for dispatch
 	SetCSShader(context, computeshader);
@@ -1662,14 +1667,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	uint32 dispatchY = depthBuffer.Height / 16;
 	context->Dispatch(dispatchX, dispatchY, 1);
 
-	///////////////////////////////////////////////////////////////////////////////////////////
-	// QUERY
-	D3D11_QUERY_DESC queryDesc;
-	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
-	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
-	ID3D11Query* queryObj;
-	DXCall(device->CreateQuery(&queryDesc, &queryObj));
-	context->End(queryObj);
+	// wait for compute shader
 	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
 	
 	//////////////////////////////////////////////////////////////////////////
@@ -1678,17 +1676,5 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	ClearCSOutputs(context);
 
 	return renderTarget;
-	/*
-	QUERY
-
-	D3D11_QUERY_DESC desc;
-	ZeroMemory(&desc, sizeof(D3D11_QUERY_DESC));
-	desc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
-	ID3D11Query* queryObj;
-
-	D3D11_SHADER_RESOURCE_VIEW_DESC SRVdesc;
-	depthBuffer.SRView->GetDesc(&SRVdesc);
-	
-	*/
 }
 
