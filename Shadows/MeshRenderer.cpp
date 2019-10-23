@@ -669,6 +669,13 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	uavCS.Texture2D.MipSlice = 0;
 	DXCall(device->CreateUnorderedAccessView(renderTarget, &uavCS, &UAView));
 
+	///////////////////////////////////////////////////////////////////////////////////////////
+	// QUERY
+	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
+	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
+	DXCall(device->CreateQuery(&this ->queryDesc, &this -> queryObj));
+	context->End(queryObj);
+
 }
 
 // Performs frustum/sphere intersection tests for all MeshPart's
@@ -1653,7 +1660,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.SetCS(context, 1);
 
 
-
 	//Setup for dispatch
 	SetCSShader(context, computeshader);
 	SetCSInputs(context, depthBuffer.SRView);
@@ -1662,21 +1668,14 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	uint32 dispatchY = depthBuffer.Height / 16;
 	context->Dispatch(dispatchX, dispatchY, 1);
 
-	///////////////////////////////////////////////////////////////////////////////////////////
-	// QUERY
-	D3D11_QUERY_DESC queryDesc;
-	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
-	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
-	ID3D11Query* queryObj;
-	DXCall(device->CreateQuery(&queryDesc, &queryObj));
-	context->End(queryObj);
-	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+
+	//Wait for compute shader
+	while ((context->GetData(this ->queryObj, nullptr, 0, 0)) == S_FALSE);
 	
 	//////////////////////////////////////////////////////////////////////////
 	// Cleanup
 	ClearCSInputs(context);
 	ClearCSOutputs(context);
-
 	return renderTarget;
 	/*
 	QUERY
