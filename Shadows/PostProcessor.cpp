@@ -37,6 +37,7 @@ void PostProcessor::Initialize(ID3D11Device* device)
     drawDepth = CompilePSFromFile(device, L"PostProcessing.hlsl", "DrawDepth");
     drawDepthMSAA = CompilePSFromFile(device, L"PostProcessing.hlsl", "DrawDepthMSAA");
 	visualizeReconstructedPosition = CompilePSFromFile(device, L"PostProcessing.hlsl", "visualizeReconstructedPosition");
+	visualizeTexture = CompilePSFromFile(device, L"PostProcessing.hlsl", "visualizeTexture");
 
     // Create average luminance calculation targets
     currLumTarget = 0;
@@ -157,4 +158,19 @@ void PostProcessor::DrawDepthBuffer(DepthStencilBuffer& depthBuffer, ID3D11Rende
 void PostProcessor::VisualizePosition(DepthStencilBuffer& depthBuffer, ID3D11RenderTargetView* rt) {
 	Assert_(depthBuffer.SRView != nullptr);
 	PostProcess(depthBuffer.SRView, rt, visualizeReconstructedPosition, L"Visualize Position");
+}
+
+void PostProcessor::VisualizeTexture(ID3D11Texture2D& texture, ID3D11RenderTargetView* rt) {
+	Assert_(&texture != nullptr);
+	ID3D11ShaderResourceView* SRView;
+	D3D11_SHADER_RESOURCE_VIEW_DESC SRViewDesc;
+	D3D11_TEXTURE2D_DESC textureDesc;
+	texture.GetDesc(&textureDesc);
+	SRViewDesc.Format = textureDesc.Format;
+	SRViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	SRViewDesc.Texture2D.MostDetailedMip = 0;
+	SRViewDesc.Texture2D.MipLevels = 1;
+	device->CreateShaderResourceView(&texture, &SRViewDesc, &SRView);
+	PostProcess(SRView, rt, visualizeTexture, L"Visualize Texture");
+
 }

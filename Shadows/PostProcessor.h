@@ -49,6 +49,8 @@ public:
 
 	void VisualizePosition(DepthStencilBuffer& depthBuffer, ID3D11RenderTargetView* rt);
 
+	void PostProcessor::VisualizeTexture(ID3D11Texture2D& texture, ID3D11RenderTargetView* rt);
+
     const Constants& GetConstants() const { return constantBuffer.Data; }
 
 protected:
@@ -68,6 +70,7 @@ protected:
     PixelShaderPtr drawDepth;
     PixelShaderPtr drawDepthMSAA;
 	PixelShaderPtr visualizeReconstructedPosition;
+	PixelShaderPtr visualizeTexture;
 
     RenderTarget2D adaptedLuminance[2];
     RenderTarget2D exposureMap;

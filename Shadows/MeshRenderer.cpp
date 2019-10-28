@@ -647,7 +647,6 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	DXCall(device->CreateComputeShader(::ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &computeshader));
 
 	// Compute Shader Input/Output
-	ID3D11Texture2D* renderTarget;
 	D3D11_TEXTURE2D_DESC renderTargetDesc;
 	ZeroMemory(&renderTargetDesc, sizeof(renderTargetDesc));
 	renderTargetDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;

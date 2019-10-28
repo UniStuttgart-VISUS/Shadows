@@ -187,6 +187,7 @@ float4 AdaptLuminance(in PSInput input) : SV_Target
 
 Texture2D<float> DepthTexture : register(t0);
 Texture2DMS<float> DepthTextureMSAA : register(t0);
+Texture2D<float> TargetTexture : register(t0);
 
 float4 DrawDepth(in PSInput input) : SV_Target
 {
@@ -218,4 +219,10 @@ float4 visualizeReconstructedPosition(in PSInput input) : SV_TARGET
     float4 worldSpacePosition = mul(viewInv, viewSpacePosition);
 
     return float4(worldSpacePosition.xyz / 10.0f, 1.0f);
+}
+
+
+float4 visualizeTexture(in PSInput input) : SV_TARGET
+{
+    return TargetTexture.Load(int3(input.PositionSS.xy, 0));
 }
