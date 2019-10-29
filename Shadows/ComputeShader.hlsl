@@ -41,8 +41,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	float4 worldSpacePosition = mul(viewInv, viewSpacePosition);
 
 	// Transformation to Light Space via orthographic projection
-	worldSpacePosition = mul(viewProj, worldSpacePosition);
+	float4 lightSpacePosition = mul(viewProj, worldSpacePosition);
 
-	Output[int2(DTid.xy)] = float4(worldSpacePosition.xyz / 10.0f, 1.0f);
+	Output[int2(DTid.xy)] = float4(lightSpacePosition.xyz / 10.0f, 1.0f);
 	
 }
