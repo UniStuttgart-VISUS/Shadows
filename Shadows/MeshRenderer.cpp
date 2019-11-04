@@ -669,11 +669,60 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	DXCall(device->CreateUnorderedAccessView(renderTarget, &uavCS, &UAView));
 
 	///////////////////////////////////////////////////////////////////////////////////////////
+	// IZB TEXTURES
+
+	// HEAD
+	D3D11_TEXTURE2D_DESC headTextureDesc;
+	ZeroMemory(&headTextureDesc, sizeof(headTextureDesc));
+	headTextureDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	headTextureDesc.Format = DXGI_FORMAT_R32G32_SINT;
+	headTextureDesc.Height = 45;	//TODO: should be dynamic
+	headTextureDesc.Width = 80;	//TODO: should be dynamic
+	headTextureDesc.ArraySize = 1;
+	headTextureDesc.MipLevels = 1;
+	headTextureDesc.SampleDesc.Count = 1;
+	headTextureDesc.SampleDesc.Quality = 0;
+	headTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&headTextureDesc, nullptr, &headTexture));
+
+	// TAIL
+	D3D11_TEXTURE2D_DESC tailTextureDesc;
+	ZeroMemory(&tailTextureDesc, sizeof(tailTextureDesc));
+	tailTextureDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	tailTextureDesc.Format = DXGI_FORMAT_R32G32_SINT;
+	tailTextureDesc.Height = 720;	//TODO: should be context.height !!!
+	tailTextureDesc.Width = 1280;	//TODO: should be context.width !!!
+	tailTextureDesc.ArraySize = 1;
+	tailTextureDesc.MipLevels = 1;
+	tailTextureDesc.SampleDesc.Count = 1;
+	tailTextureDesc.SampleDesc.Quality = 0;
+	tailTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&tailTextureDesc, nullptr, &tailTexture));
+
+	// create UAV for head 
+	D3D11_UNORDERED_ACCESS_VIEW_DESC headUAVDesc;
+	ZeroMemory(&headUAVDesc, sizeof(headUAVDesc));
+	headUAVDesc.Format = DXGI_FORMAT_R32G32_SINT;
+	headUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	headUAVDesc.Texture2D.MipSlice = 0;
+	DXCall(device->CreateUnorderedAccessView(headTexture, &headUAVDesc, &headUAV));
+
+	// create UAV for tail
+	D3D11_UNORDERED_ACCESS_VIEW_DESC tailUAVDesc;
+	ZeroMemory(&tailUAVDesc, sizeof(tailUAVDesc));
+	tailUAVDesc.Format = DXGI_FORMAT_R32G32_SINT;
+	tailUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	tailUAVDesc.Texture2D.MipSlice = 0;
+	DXCall(device->CreateUnorderedAccessView(tailTexture, &tailUAVDesc, &tailUAV));
+
+	///////////////////////////////////////////////////////////////////////////////////////////
 	// QUERY
 	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
 	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
 	DXCall(device->CreateQuery(&this->queryDesc, &this->queryObj));
 	context->End(queryObj);
+
+
 }
 
 // Performs frustum/sphere intersection tests for all MeshPart's
@@ -1661,7 +1710,8 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	//Setup for dispatch
 	SetCSShader(context, computeshader);
 	SetCSInputs(context, depthBuffer.SRView);
-	context->CSSetUnorderedAccessViews(0, 1, &UAView, nullptr);
+	ID3D11UnorderedAccessView* uavs[3] = { UAView, headUAV, tailUAV };
+	context->CSSetUnorderedAccessViews(0, 3, uavs, nullptr);
 	uint32 dispatchX = depthBuffer.Width / 16;
 	uint32 dispatchY = depthBuffer.Height / 16;
 	context->Dispatch(dispatchX, dispatchY, 1);

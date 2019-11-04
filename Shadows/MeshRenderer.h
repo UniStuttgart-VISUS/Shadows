@@ -259,10 +259,15 @@ protected:
 	ConstantBuffer<FrustumConstants> tempFrustumPlanesBuffer;
 
 	ConstantBuffer<ComputeShaderConstants> computeShaderConstants;
+
 	ID3D11UnorderedAccessView* UAView;
+	ID3D11UnorderedAccessView* headUAV;
+	ID3D11UnorderedAccessView* tailUAV;
+
 	ID3D11Texture2D* renderTarget;
+	ID3D11Texture2D* headTexture;
+	ID3D11Texture2D* tailTexture;
+
 	ID3D11Query* queryObj;
-	D3D11_QUERY_DESC queryDesc;
-
-
+	D3D11_QUERY_DESC queryDesc;   	 
 };
