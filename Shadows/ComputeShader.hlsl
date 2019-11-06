@@ -10,9 +10,8 @@ cbuffer CSConstants : register(b1)
 {
     float4x4 viewInv;
     float4x4 projInv;
-    float width;
-    float height;
 	float4x4 viewProj;
+    float4 texSize;
 };
 
 Texture2DMS<float4> Input : register(t0);
@@ -29,8 +28,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
 
 	// Calcuate Clip Space
-	float x = (DTid.x/width) * 2.0f - 1.0f;
-	float y = (1 - (DTid.y/height)) * 2.0f - 1.0f;
+	float x = (DTid.x/texSize.x) * 2.0f - 1.0f;
+	float y = (1 - (DTid.y/texSize.y)) * 2.0f - 1.0f;
 	float4 clipSpacePosition = float4(x, y, depth, 1.0f);
 
 	// Transformation to ViewSpace

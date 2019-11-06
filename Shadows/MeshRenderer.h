@@ -242,9 +242,8 @@ protected:
 	{
 		Float4x4 viewInv;
 		Float4x4 projInv;
-		float width;
-		float height;
 		Float4x4 viewProj;
+		float4 texSize;
 	};
 
 	ConstantBuffer<DepthOnlyConstants> depthOnlyConstants;

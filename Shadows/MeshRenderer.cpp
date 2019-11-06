@@ -1700,9 +1700,11 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	// Constant Buffer Setup
 	computeShaderConstants.Data.viewInv = Float4x4::Invert(camera.ViewMatrix());
 	computeShaderConstants.Data.projInv = Float4x4::Invert(camera.ProjectionMatrix());
-	computeShaderConstants.Data.width = depthBuffer.Width;
-	computeShaderConstants.Data.height = depthBuffer.Height;
 	computeShaderConstants.Data.viewProj = MakeGlobalShadowMatrix(camera);
+	computeShaderConstants.Data.texSize.x = depthBuffer.Width;
+	computeShaderConstants.Data.texSize.y = depthBuffer.Height;
+	computeShaderConstants.Data.texSize.z = 0.0f;
+	computeShaderConstants.Data.texSize.w = 0.0f;
 
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);
