@@ -1708,10 +1708,14 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.Data.viewInv = Float4x4::Invert(camera.ViewMatrix());
 	computeShaderConstants.Data.projInv = Float4x4::Invert(camera.ProjectionMatrix());
 	computeShaderConstants.Data.viewProj = MakeGlobalShadowMatrix(camera);
+	computeShaderConstants.Data.texData.x = static_cast<float>(depthBuffer.Width);
+	computeShaderConstants.Data.texData.y = static_cast<float>(depthBuffer.Height);
+	computeShaderConstants.Data.texData.z = 0.0f;
+	computeShaderConstants.Data.texData.w = 0.0f;
 	computeShaderConstants.Data.texSize.x = depthBuffer.Width;
 	computeShaderConstants.Data.texSize.y = depthBuffer.Height;
-	computeShaderConstants.Data.texSize.z = 0.0f;
-	computeShaderConstants.Data.texSize.w = 0.0f;
+	computeShaderConstants.Data.texSize.z = 0;
+	computeShaderConstants.Data.texSize.w = 0;
 
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);

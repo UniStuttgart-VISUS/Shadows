@@ -11,7 +11,8 @@ cbuffer CSConstants : register(b1)
     float4x4 viewInv;
     float4x4 projInv;
 	float4x4 viewProj;
-    float4 texSize;
+    float4 texData;
+    uint4 texSize;
 };
 
 Texture2DMS<float4> Input : register(t0);
@@ -22,15 +23,18 @@ RWTexture2DArray<int> TAIL : register(u2);
 [numthreads(16, 16, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
+    // check DTid
+    if (any(DTid.xy >= texSize.xy))
+    {
+        return;
+    }
 
 	//Depth Transformation
-    float depth = Input.Load(int2(DTid.xy), 0).x;
-
-
+        float depth = Input.Load(int2(DTid.xy), 0).x;
 
 	// Calcuate Clip Space
-	float x = (DTid.x/texSize.x) * 2.0f - 1.0f;
-	float y = (1 - (DTid.y/texSize.y)) * 2.0f - 1.0f;
+	float x = (DTid.x/texData.x) * 2.0f - 1.0f;
+	float y = (1 - (DTid.y/texData.y)) * 2.0f - 1.0f;
 	float4 clipSpacePosition = float4(x, y, depth, 1.0f);
 
 	// Transformation to ViewSpace
