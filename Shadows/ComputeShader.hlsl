@@ -16,15 +16,16 @@ cbuffer CSConstants : register(b1)
 
 Texture2DMS<float4> Input : register(t0);
 RWTexture2D<float4> Output : register(u0);
-RWTexture2D<int2> HEAD : register(u1);
-RWTexture2D<int2> TAIL : register(u2);
+RWTexture2DArray<int> HEAD : register(u1);
+RWTexture2DArray<int> TAIL : register(u2);
 
 [numthreads(16, 16, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
 
 	//Depth Transformation
-	float depth = Input.Load(int2(DTid.xy), 0).x;
+    float depth = Input.Load(int2(DTid.xy), 0).x;
+
 
 
 	// Calcuate Clip Space
@@ -36,7 +37,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	float4 viewSpacePosition = mul(projInv, clipSpacePosition);
 
 	// Perspective division
-	//viewSpacePosition /= viewSpacePosition.w;
+	viewSpacePosition /= viewSpacePosition.w;
 
 	// Transformation to world space
 	float4 worldSpacePosition = mul(viewInv, viewSpacePosition);
@@ -44,19 +45,22 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	// Transformation to Light Space via orthographic projection
     float4 lightSpacePosition = mul(viewProj, worldSpacePosition);
 
-    lightSpacePosition /= lightSpacePosition.w;
     
     Output[int2(DTid.xy)] = float4(lightSpacePosition.xyz, 1.0f);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // TEST IZB
 
-    float u = lightSpacePosition.x / lightSpacePosition.z;
-    float v = lightSpacePosition.y / lightSpacePosition.z;
+    int u = lightSpacePosition.x;
+    int v = lightSpacePosition.y;
 
 
-    HEAD[int2(DTid.xy)] = int2(0, 1);
-    TAIL[int2(DTid.xy)] = int2(1, 0);
+    TAIL[int3(DTid.xy, 0)] = u;
+    TAIL[int3(DTid.xy, 1)] = v;
+
+    HEAD[int3(DTid.xy, 0)] = u;
+    HEAD[int3(DTid.xy, 1)] = v;
+
 
     /*
     // PSEUDOCODE IZB

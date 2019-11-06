@@ -675,10 +675,10 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	D3D11_TEXTURE2D_DESC headTextureDesc;
 	ZeroMemory(&headTextureDesc, sizeof(headTextureDesc));
 	headTextureDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	headTextureDesc.Format = DXGI_FORMAT_R32G32_SINT;
+	headTextureDesc.Format = DXGI_FORMAT_R32_SINT;
 	headTextureDesc.Height = 45;	//TODO: should be dynamic
 	headTextureDesc.Width = 80;	//TODO: should be dynamic
-	headTextureDesc.ArraySize = 1;
+	headTextureDesc.ArraySize = 2;
 	headTextureDesc.MipLevels = 1;
 	headTextureDesc.SampleDesc.Count = 1;
 	headTextureDesc.SampleDesc.Quality = 0;
@@ -689,10 +689,10 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	D3D11_TEXTURE2D_DESC tailTextureDesc;
 	ZeroMemory(&tailTextureDesc, sizeof(tailTextureDesc));
 	tailTextureDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	tailTextureDesc.Format = DXGI_FORMAT_R32G32_SINT;
+	tailTextureDesc.Format = DXGI_FORMAT_R32_SINT;
 	tailTextureDesc.Height = 720;	//TODO: should be context.height !!!
 	tailTextureDesc.Width = 1280;	//TODO: should be context.width !!!
-	tailTextureDesc.ArraySize = 1;
+	tailTextureDesc.ArraySize = 2;
 	tailTextureDesc.MipLevels = 1;
 	tailTextureDesc.SampleDesc.Count = 1;
 	tailTextureDesc.SampleDesc.Quality = 0;
@@ -702,17 +702,24 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	// create UAV for head 
 	D3D11_UNORDERED_ACCESS_VIEW_DESC headUAVDesc;
 	ZeroMemory(&headUAVDesc, sizeof(headUAVDesc));
-	headUAVDesc.Format = DXGI_FORMAT_R32G32_SINT;
-	headUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	headUAVDesc.Texture2D.MipSlice = 0;
+	headUAVDesc.Format = DXGI_FORMAT_R32_SINT;
+	headUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+	headUAVDesc.Texture2DArray.ArraySize = 2;
+	headUAVDesc.Texture2DArray.FirstArraySlice = 0;
+	headUAVDesc.Texture2DArray.MipSlice = 0;
+
 	DXCall(device->CreateUnorderedAccessView(headTexture, &headUAVDesc, &headUAV));
 
 	// create UAV for tail
 	D3D11_UNORDERED_ACCESS_VIEW_DESC tailUAVDesc;
 	ZeroMemory(&tailUAVDesc, sizeof(tailUAVDesc));
-	tailUAVDesc.Format = DXGI_FORMAT_R32G32_SINT;
-	tailUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	tailUAVDesc.Texture2D.MipSlice = 0;
+	tailUAVDesc.Format = DXGI_FORMAT_R32_SINT;
+	tailUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+	tailUAVDesc.Texture2DArray.ArraySize = 2;
+	tailUAVDesc.Texture2DArray.MipSlice = 0;
+	tailUAVDesc.Texture2DArray.FirstArraySlice = 0;
+
+
 	DXCall(device->CreateUnorderedAccessView(tailTexture, &tailUAVDesc, &tailUAV));
 
 	///////////////////////////////////////////////////////////////////////////////////////////
