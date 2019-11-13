@@ -55,34 +55,35 @@ void main(uint3 DTid : SV_DispatchThreadID)
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // TEST IZB
 
-    int u = lightSpacePosition.x;
-    int v = lightSpacePosition.y;
+    float u = lightSpacePosition.x * 80;
+    float v = lightSpacePosition.y * 45;
 
 
-    TAIL[int3(DTid.xy, 0)] = u;
-    TAIL[int3(DTid.xy, 1)] = v;
+    //TAIL[int3(DTid.xy, 0)] = u * 1280;
+    //TAIL[int3(DTid.xy, 1)] = v * 720;
 
-    HEAD[int3(DTid.xy, 0)] = u;
-    HEAD[int3(DTid.xy, 1)] = v;
+    //HEAD[int3(DTid.xy, 0)] = u * 80;
+    //HEAD[int3(DTid.xy, 1)] = v * 45;
 
+	/*
+	// PSEUDOCODE IZB
+	if (HEAD[int3(u, v, 0)] == 0 && HEAD[int3(u, v, 1)] == 0)
+	{
+		HEAD[int3(u, v, 0)] = DTid.x;
+		HEAD[int3(u, v, 1)] = DTid.y;
 
-    /*
-    // PSEUDOCODE IZB
-    if (HEAD_Texture[u, v] == (-1, -1))
-    {
-        HEAD_Texture[u, v] = DTid.xy;
+	}
+	else
+	{
+		int2 index = int2(HEAD[int3(u, v, 0)], HEAD[int3(u, v, 1)]);
+		while (TAIL[int3(index, 0)] != 0 || TAIL[int3(index, 1)] != 0)
+		{
+			index = int2(TAIL[int3(index, 0)], TAIL[int3(index, 1)]);
+		}
+		TAIL[int3(index, 0)] = DTid.x;
+		TAIL[int3(index, 1)] = DTid.y;
 
-    }
-    else
-    {
-        int2 index = HEAD_Texture[lightSpacePosition.uv];
-        while (TAIL_Texture[index] != (-1, -1))
-        {
-            index = TAIL_Texture[index];
-        }
-        TAIL_Texture[index] = DTid.xy;
-
-    }
-    */
+	}
+	*/
 	
 }

@@ -291,6 +291,44 @@ static Float4x4 MakeGlobalShadowMatrix(const Camera& camera)
     // Come up with a new orthographic camera for the shadow caster
     OrthographicCamera shadowCamera(-0.5f, -0.5f, 0.5f,
                                     0.5f, 0.0f, 1.0f);
+
+	// TODO: new orthographic camera with dynamic values
+	if (AppSettings::DebugMode == DebugMode::ComputeShader) {
+
+
+		// Calculate the radius of a bounding sphere surrounding the frustum corners
+		Float3 maxExtents;
+		Float3 minExtents;
+		float sphereRadius = 0.0f;
+		for (int i = 0; i < 8; ++i)
+		{
+			float dist = Float3::Length(frustumCorners[i] - frustumCenter);
+			sphereRadius = std::max(sphereRadius, dist);
+		}
+
+		sphereRadius = ceil(sphereRadius * 16.0f) / 16.0f;
+
+		maxExtents = sphereRadius;
+		minExtents = -maxExtents;
+
+		// set min and max extents
+		float minX, minY, maxX, maxY, nearClip, farClip;
+		minX = minExtents.x;
+		minY = minExtents.y;
+		maxX = maxExtents.x;
+		maxY = maxExtents.y;
+		nearClip = 0.0f;
+		farClip = 1.0f;
+
+		//////////////////////////////////////////////////////////////////////////////
+		// DEBUG
+		//std::cout << "minX:" << minX << " minY: " << minY << " maxX: " << maxX << " maxY: " << maxY << std::endl;
+		//int c = 0;
+		//////////////////////////////////////////////////////////////////////////////
+
+		shadowCamera = OrthographicCamera(minX, minY, maxX, maxY, nearClip, farClip);
+	}
+
     shadowCamera.SetLookAt(shadowCameraPos, frustumCenter, upDir);
 
     Float4x4 texScaleBias = Float4x4::ScaleMatrix(Float3(0.5f, -0.5f, 1.0f));
@@ -707,7 +745,6 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	headUAVDesc.Texture2DArray.ArraySize = 2;
 	headUAVDesc.Texture2DArray.FirstArraySlice = 0;
 	headUAVDesc.Texture2DArray.MipSlice = 0;
-
 	DXCall(device->CreateUnorderedAccessView(headTexture, &headUAVDesc, &headUAV));
 
 	// create UAV for tail
@@ -718,8 +755,6 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	tailUAVDesc.Texture2DArray.ArraySize = 2;
 	tailUAVDesc.Texture2DArray.MipSlice = 0;
 	tailUAVDesc.Texture2DArray.FirstArraySlice = 0;
-
-
 	DXCall(device->CreateUnorderedAccessView(tailTexture, &tailUAVDesc, &tailUAV));
 
 	///////////////////////////////////////////////////////////////////////////////////////////
@@ -1716,14 +1751,27 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.Data.texSize.y = depthBuffer.Height;
 	computeShaderConstants.Data.texSize.z = 0;
 	computeShaderConstants.Data.texSize.w = 0;
-
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);
+
+	//Map
+	//D3D11_MAPPED_SUBRESOURCE mappedResource;
+	//context->Map(headFlagTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+
+	//memcopy
+	std::vector<int> init(80*45);
+
+	std::fill_n(init.begin(), sizeof(init), -1);
+	//memcpy(mappedResource.pData, init, sizeof(init));
+	context->UpdateSubresource(headTexture, 0, NULL, init.data(), 320, 320*45); //resolution * 4bytes
+
+	//unmap
+	//context->Unmap(headFlagTexture, 0);
 
 	//Setup for dispatch
 	SetCSShader(context, computeshader);
 	SetCSInputs(context, depthBuffer.SRView);
-	ID3D11UnorderedAccessView* uavs[3] = { UAView, headUAV, tailUAV };
+	ID3D11UnorderedAccessView* uavs[3] = { UAView, headUAV, tailUAV};
 	context->CSSetUnorderedAccessViews(0, 3, uavs, nullptr);
 	uint32 dispatchX = depthBuffer.Width / 16;
 	uint32 dispatchY = depthBuffer.Height / 16;
@@ -1731,8 +1779,8 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 
 	// wait for compute shader
 	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
-	
-	//////////////////////////////////////////////////////////////////////////
+
+		//////////////////////////////////////////////////////////////////////////
 	// Cleanup
 	ClearCSInputs(context);
 	ClearCSOutputs(context);
