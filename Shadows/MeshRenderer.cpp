@@ -9,6 +9,7 @@
 //=================================================================================================
 
 #include "PCH.h"
+#include <iostream>
 
 #include "MeshRenderer.h"
 #include "AppSettings.h"
@@ -24,6 +25,8 @@
 // Constants
 static const float ShadowNearClip = 1.0f;
 static const bool UseComputeReduction = true;
+static const int headTextureWidth = 80;
+static const int headTextureHeight = 45;
 
 // Finds the approximate smallest enclosing bounding sphere for a set of points. Based on
 // "An Efficient Bounding Sphere", by Jack Ritter.
@@ -714,8 +717,8 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	ZeroMemory(&headTextureDesc, sizeof(headTextureDesc));
 	headTextureDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	headTextureDesc.Format = DXGI_FORMAT_R32_SINT;
-	headTextureDesc.Height = 45;	//TODO: should be dynamic
-	headTextureDesc.Width = 80;	//TODO: should be dynamic
+	headTextureDesc.Height = headTextureHeight;
+	headTextureDesc.Width = headTextureWidth;
 	headTextureDesc.ArraySize = 2;
 	headTextureDesc.MipLevels = 1;
 	headTextureDesc.SampleDesc.Count = 1;
@@ -1754,19 +1757,12 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);
 
-	//Map
-	//D3D11_MAPPED_SUBRESOURCE mappedResource;
-	//context->Map(headFlagTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-
-	//memcopy
-	std::vector<int> init(80*45);
-
-	std::fill_n(init.begin(), sizeof(init), -1);
-	//memcpy(mappedResource.pData, init, sizeof(init));
-	context->UpdateSubresource(headTexture, 0, NULL, init.data(), 320, 320*45); //resolution * 4bytes
-
-	//unmap
-	//context->Unmap(headFlagTexture, 0);
+	// Update Head Texture
+	int size = headTextureWidth * headTextureHeight;
+	std::vector<int> init(size, -1);
+	UINT SrcRowPitch = headTextureWidth * sizeof(DXGI_FORMAT_R32_SINT); //
+	UINT SrcDepthPitch = SrcRowPitch * headTextureHeight;
+	context->UpdateSubresource(headTexture, 0, NULL, init.data(), SrcRowPitch, SrcDepthPitch);
 
 	//Setup for dispatch
 	SetCSShader(context, computeshader);
