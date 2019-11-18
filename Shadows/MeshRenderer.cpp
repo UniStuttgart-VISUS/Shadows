@@ -1758,11 +1758,20 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.SetCS(context, 1);
 
 	// Update Head Texture
-	int size = headTextureWidth * headTextureHeight;
-	std::vector<int> init(size, -1);
-	UINT SrcRowPitch = headTextureWidth * sizeof(DXGI_FORMAT_R32_SINT); //
-	UINT SrcDepthPitch = SrcRowPitch * headTextureHeight;
-	context->UpdateSubresource(headTexture, 0, NULL, init.data(), SrcRowPitch, SrcDepthPitch);
+	int sizeHead = headTextureWidth * headTextureHeight;
+	std::vector<int> initHead(sizeHead, -1);
+	UINT SrcRowPitchHead = headTextureWidth * sizeof(DXGI_FORMAT_R32_SINT); //
+	UINT SrcDepthPitchHead = SrcRowPitchHead * headTextureHeight;
+	context->UpdateSubresource(headTexture, 0, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
+	context->UpdateSubresource(headTexture, 1, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
+
+	//Update Tail Texture
+	int sizeTail = depthBuffer.Width * depthBuffer.Height;
+	std::vector<int> initTail(sizeTail, -1);
+	UINT SrcRowPitchTail = depthBuffer.Width * sizeof(DXGI_FORMAT_R32_SINT); //
+	UINT SrcDepthPitchTail = SrcRowPitchTail * depthBuffer.Height;
+	context->UpdateSubresource(tailTexture, 0, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
+	context->UpdateSubresource(tailTexture, 1, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
 
 	//Setup for dispatch
 	SetCSShader(context, computeshader);
