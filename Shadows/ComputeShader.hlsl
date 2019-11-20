@@ -55,8 +55,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // IZB
 
-    float u = lightSpacePosition.x * 80.0f;
-    float v = lightSpacePosition.y * 45.0f;
+    int u = lightSpacePosition.x * 80.0f;
+    int v = lightSpacePosition.y * 45.0f;
 
 	
 	// PSEUDOCODE IZB
@@ -66,10 +66,12 @@ void main(uint3 DTid : SV_DispatchThreadID)
     {
         InterlockedCompareStore(HEAD[int3(u, v, 1)], -1, DTid.y);
     }
+    
     else
     {
         // Spin Lock to make sure headY is written
         int headY = HEAD[int3(u, v, 1)]; //HEAD.Load(int4(u, v, 1, 0)).x;
+        [allow_uav_condition]
         while (headY == -1)
         {
             headY = HEAD[int3(u, v, 1)]; //HEAD.Load(int4(u, v, 1, 0)).x;
@@ -92,6 +94,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
             {
                 // spin lock to make sure that tailY ia written
                 int tailY = TAIL[int3(u, v, 1)]; //HEAD.Load(int4(u, v, 1, 0)).x;
+                [allow_uav_condition]
                 while (tailY == -1)
                 {
                     tailY = TAIL[int3(u, v, 1)]; //TAIL.Load(int4(u, v, 1, 0)).x;
@@ -134,6 +137,5 @@ void main(uint3 DTid : SV_DispatchThreadID)
         InterlockedCompareStore(TAIL[int3(index, 1)], -1, DTid.y);
         
 
-    }	
-*/
+    }*/	
 }
