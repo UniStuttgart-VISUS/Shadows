@@ -53,37 +53,87 @@ void main(uint3 DTid : SV_DispatchThreadID)
     Output[int2(DTid.xy)] = float4(lightSpacePosition.xyz, 1.0f);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
-    // TEST IZB
+    // IZB
 
-    float u = lightSpacePosition.x * 80;
-    float v = lightSpacePosition.y * 45;
+    float u = lightSpacePosition.x * 80.0f;
+    float v = lightSpacePosition.y * 45.0f;
 
-
-    //TAIL[int3(DTid.xy, 0)] = u * 1280;
-    //TAIL[int3(DTid.xy, 1)] = v * 720;
-
-    //HEAD[int3(DTid.xy, 0)] = u * 80;
-    //HEAD[int3(DTid.xy, 1)] = v * 45;
-
-	/*
+	
 	// PSEUDOCODE IZB
-	if (HEAD[int3(u, v, 0)] == 0 && HEAD[int3(u, v, 1)] == 0)
+    int headX = -2;
+    InterlockedCompareExchange(HEAD[int3(u, v, 0)], -1, DTid.x, headX);
+    if (headX == -1)
+    {
+        InterlockedCompareStore(HEAD[int3(u, v, 1)], -1, DTid.y);
+    }
+    else
+    {
+        // Spin Lock to make sure headY is written
+        int headY = HEAD[int3(u, v, 1)]; //HEAD.Load(int4(u, v, 1, 0)).x;
+        while (headY == -1)
+        {
+            headY = HEAD[int3(u, v, 1)]; //HEAD.Load(int4(u, v, 1, 0)).x;
+        }
+
+        // headX and headY are written
+
+        int tailX = -2;
+        InterlockedCompareExchange(TAIL[int3(headX, headY, 0)], -1, DTid.x, tailX);
+        if (tailX == -1)
+        {
+            InterlockedCompareStore(TAIL[int3(u, v, 1)], -1, DTid.y);
+
+        }
+        else
+        {
+            // while loop to search for free index
+            [allow_uav_condition]
+            while (tailX != -1)
+            {
+                // spin lock to make sure that tailY ia written
+                int tailY = TAIL[int3(u, v, 1)]; //HEAD.Load(int4(u, v, 1, 0)).x;
+                while (tailY == -1)
+                {
+                    tailY = TAIL[int3(u, v, 1)]; //TAIL.Load(int4(u, v, 1, 0)).x;
+
+                }
+
+                // tailX and tailY are written
+                InterlockedCompareExchange(TAIL[int3(tailX, tailY, 0)], -1, DTid.x, tailX);
+                if (tailX == -1)
+                {
+                    InterlockedCompareStore(TAIL[int3(u, v, 1)], -1, DTid.y);
+
+                }
+            
+            }
+        }
+
+
+    }
+    /*
+
+	if (HEAD[int3(u, v, 0)] == -1 && HEAD[int3(u, v, 1)] == -1)
 	{
-		HEAD[int3(u, v, 0)] = DTid.x;
-		HEAD[int3(u, v, 1)] = DTid.y;
+		//HEAD[int3(u, v, 0)] = DTid.x;
+		//HEAD[int3(u, v, 1)] = DTid.y;
+        InterlockedCompareStore(HEAD[int3(u, v, 0)], -1, DTid.x);
+        InterlockedCompareStore(HEAD[int3(u, v, 1)], -1, DTid.y);
 
 	}
 	else
-	{
-		int2 index = int2(HEAD[int3(u, v, 0)], HEAD[int3(u, v, 1)]);
-		while (TAIL[int3(index, 0)] != 0 || TAIL[int3(index, 1)] != 0)
-		{
-			index = int2(TAIL[int3(index, 0)], TAIL[int3(index, 1)]);
-		}
-		TAIL[int3(index, 0)] = DTid.x;
-		TAIL[int3(index, 1)] = DTid.y;
+    {
+        int2 index = int2(HEAD[int3(u, v, 0)], HEAD[int3(u, v, 1)]);
+        while (TAIL[int3(index, 0)] != -1 || TAIL[int3(index, 1)] != -1)
+        {
+            index = int2(TAIL[int3(index, 0)], TAIL[int3(index, 1)]);
+        }
+        //TAIL[int3(index, 0)] = DTid.x;
+        //TAIL[int3(index, 1)] = DTid.y;
+        InterlockedCompareStore(TAIL[int3(index, 0)], -1, DTid.x);
+        InterlockedCompareStore(TAIL[int3(index, 1)], -1, DTid.y);
+        
 
-	}
-	*/
-	
+    }	
+*/
 }
