@@ -716,6 +716,7 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	D3D11_TEXTURE2D_DESC headTextureDesc;
 	ZeroMemory(&headTextureDesc, sizeof(headTextureDesc));
 	headTextureDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	headTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	headTextureDesc.Format = DXGI_FORMAT_R32_SINT;
 	headTextureDesc.Height = headTextureHeight;
 	headTextureDesc.Width = headTextureWidth;
@@ -725,6 +726,30 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	headTextureDesc.SampleDesc.Quality = 0;
 	headTextureDesc.Usage = D3D11_USAGE_DEFAULT;
 	DXCall(device->CreateTexture2D(&headTextureDesc, nullptr, &headTexture));
+
+	//COPY HEAD
+	D3D11_TEXTURE2D_DESC headTextureDescStaging;
+	ZeroMemory(&headTextureDescStaging, sizeof(headTextureDescStaging));
+	headTextureDescStaging.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	headTextureDescStaging.Format = DXGI_FORMAT_R32_SINT;
+	headTextureDescStaging.Height = headTextureHeight;
+	headTextureDescStaging.Width = headTextureWidth;
+	headTextureDescStaging.ArraySize = 2;
+	headTextureDescStaging.MipLevels = 1;
+	headTextureDescStaging.SampleDesc.Count = 1;
+	headTextureDescStaging.SampleDesc.Quality = 0;
+	headTextureDescStaging.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&headTextureDescStaging, nullptr, &headTextureStaging));
+
+	//Update HeadTextureCopy Texture
+	int sizeHead = headTextureWidth * headTextureHeight;
+	std::vector<int> initHead(sizeHead, -1);
+	UINT SrcRowPitchHead = headTextureWidth * sizeof(DXGI_FORMAT_R32_SINT); //
+	UINT SrcDepthPitchHead = SrcRowPitchHead * headTextureHeight;
+	context->UpdateSubresource(headTextureStaging, 0, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
+	context->UpdateSubresource(headTextureStaging, 1, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
+
+
 
 	// TAIL
 	D3D11_TEXTURE2D_DESC tailTextureDesc;
@@ -739,6 +764,28 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	tailTextureDesc.SampleDesc.Quality = 0;
 	tailTextureDesc.Usage = D3D11_USAGE_DEFAULT;
 	DXCall(device->CreateTexture2D(&tailTextureDesc, nullptr, &tailTexture));
+
+	//COPY TAIL
+
+	D3D11_TEXTURE2D_DESC tailTextureStagingDesc;
+	ZeroMemory(&tailTextureStagingDesc, sizeof(tailTextureStagingDesc));
+	tailTextureStagingDesc.Format = DXGI_FORMAT_R32_SINT;
+	tailTextureStagingDesc.Height = 720;	//TODO: should be context.height !!!
+	tailTextureStagingDesc.Width = 1280;	//TODO: should be context.width !!!
+	tailTextureStagingDesc.ArraySize = 2;
+	tailTextureStagingDesc.MipLevels = 1;
+	tailTextureStagingDesc.SampleDesc.Count = 1;
+	tailTextureStagingDesc.SampleDesc.Quality = 0;
+	tailTextureStagingDesc.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&tailTextureStagingDesc, nullptr, &tailTextureStaging));
+
+	//Update TAIL COPY Texture
+	int sizeTail = tailTextureStagingDesc.Width * tailTextureStagingDesc.Height;
+	std::vector<int> initTail(sizeTail, -1);
+	UINT SrcRowPitchTail = tailTextureStagingDesc.Width * sizeof(DXGI_FORMAT_R32_SINT); //
+	UINT SrcDepthPitchTail = SrcRowPitchTail * tailTextureStagingDesc.Height;
+	context->UpdateSubresource(tailTextureStaging, 0, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
+	context->UpdateSubresource(tailTextureStaging, 1, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
 
 	// create UAV for head 
 	D3D11_UNORDERED_ACCESS_VIEW_DESC headUAVDesc;
@@ -1757,22 +1804,12 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);
 
-	// Update Head Texture
-	int sizeHead = headTextureWidth * headTextureHeight;
-	std::vector<int> initHead(sizeHead, -1);
-	UINT SrcRowPitchHead = headTextureWidth * sizeof(DXGI_FORMAT_R32_SINT); //
-	UINT SrcDepthPitchHead = SrcRowPitchHead * headTextureHeight;
-	context->UpdateSubresource(headTexture, 0, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
-	context->UpdateSubresource(headTexture, 1, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
 
-	//Update Tail Texture
-	int sizeTail = depthBuffer.Width * depthBuffer.Height;
-	std::vector<int> initTail(sizeTail, -1);
-	UINT SrcRowPitchTail = depthBuffer.Width * sizeof(DXGI_FORMAT_R32_SINT); //
-	UINT SrcDepthPitchTail = SrcRowPitchTail * depthBuffer.Height;
-	context->UpdateSubresource(tailTexture, 0, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
-	context->UpdateSubresource(tailTexture, 1, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
-
+	//reset textures to -1
+	context->CopyResource(headTexture, headTextureStaging);
+	context->CopyResource(tailTexture, tailTextureStaging);
+	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+	
 	//Setup for dispatch
 	SetCSShader(context, computeshader);
 	SetCSInputs(context, depthBuffer.SRView);

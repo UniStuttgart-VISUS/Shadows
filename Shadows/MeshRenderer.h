@@ -266,7 +266,9 @@ protected:
 
 	ID3D11Texture2D* renderTarget;
 	ID3D11Texture2D* headTexture;
+	ID3D11Texture2D* headTextureStaging;
 	ID3D11Texture2D* tailTexture;
+	ID3D11Texture2D* tailTextureStaging;
 
 	ID3D11Query* queryObj;
 	D3D11_QUERY_DESC queryDesc;   	 
