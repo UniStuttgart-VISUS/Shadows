@@ -1830,6 +1830,11 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	ClearCSInputs(context);
 	ClearCSOutputs(context);
 
-	return tailTexture;
+	if (AppSettings::DebugMode == DebugMode::ComputeShader) {
+		return renderTarget;
+	}
+	if (AppSettings::DebugMode == DebugMode::TAIL) {
+		return tailTexture;
+	}
 }
 

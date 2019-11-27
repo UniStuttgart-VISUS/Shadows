@@ -132,6 +132,7 @@ enum class DebugMode {
 	Position = 2,
 	VisualizeShadowMap = 3,
 	ComputeShader = 4,
+	TAIL = 5,
 
 	NumValues
 };

@@ -38,6 +38,7 @@ void PostProcessor::Initialize(ID3D11Device* device)
     drawDepthMSAA = CompilePSFromFile(device, L"PostProcessing.hlsl", "DrawDepthMSAA");
 	visualizeReconstructedPosition = CompilePSFromFile(device, L"PostProcessing.hlsl", "visualizeReconstructedPosition");
 	visualizeTexture = CompilePSFromFile(device, L"PostProcessing.hlsl", "visualizeTexture");
+	visualizeTextureInt = CompilePSFromFile(device, L"PostProcessing.hlsl", "visualizeTextureInt");
 
     // Create average luminance calculation targets
     currLumTarget = 0;
@@ -172,5 +173,18 @@ void PostProcessor::VisualizeTexture(ID3D11Texture2D& texture, ID3D11RenderTarge
 	SRViewDesc.Texture2D.MipLevels = 1;
 	device->CreateShaderResourceView(&texture, &SRViewDesc, &SRView);
 	PostProcess(SRView, rt, visualizeTexture, L"Visualize Texture");
+}
 
+void PostProcessor::VisualizeTextureInt(ID3D11Texture2D& texture, ID3D11RenderTargetView* rt) {
+	Assert_(&texture != nullptr);
+	ID3D11ShaderResourceView* SRView;
+	D3D11_SHADER_RESOURCE_VIEW_DESC SRViewDesc;
+	D3D11_TEXTURE2D_DESC textureDesc;
+	texture.GetDesc(&textureDesc);
+	SRViewDesc.Format = textureDesc.Format;
+	SRViewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	SRViewDesc.Texture2D.MostDetailedMip = 0;
+	SRViewDesc.Texture2D.MipLevels = 1;
+	device->CreateShaderResourceView(&texture, &SRViewDesc, &SRView);
+	PostProcess(SRView, rt, visualizeTextureInt, L"Visualize Texture Int");
 }

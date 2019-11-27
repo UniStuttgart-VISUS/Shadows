@@ -51,6 +51,8 @@ public:
 
 	void PostProcessor::VisualizeTexture(ID3D11Texture2D& texture, ID3D11RenderTargetView* rt);
 
+	void PostProcessor::VisualizeTextureInt(ID3D11Texture2D& texture, ID3D11RenderTargetView* rt);
+
     const Constants& GetConstants() const { return constantBuffer.Data; }
 
 protected:
@@ -71,6 +73,7 @@ protected:
     PixelShaderPtr drawDepthMSAA;
 	PixelShaderPtr visualizeReconstructedPosition;
 	PixelShaderPtr visualizeTexture;
+	PixelShaderPtr visualizeTextureInt;
 
     RenderTarget2D adaptedLuminance[2];
     RenderTarget2D exposureMap;
