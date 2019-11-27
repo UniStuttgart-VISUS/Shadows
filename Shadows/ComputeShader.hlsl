@@ -61,58 +61,82 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	
 	// PSEUDOCODE IZB
     int headX = -2;
+	int headY = -2;
+	int tailX = -2;
+	int tailY = -2;
+	int saveX;
+	int saveY;
+
+	/////////////////////////////////////////////////////////////////////////////////
+	// Bester Fall
     InterlockedCompareExchange(HEAD[int3(u, v, 0)], -1, DTid.x, headX);
-    if (headX == -1)
-    {
+    if (headX == -1){
         InterlockedCompareStore(HEAD[int3(u, v, 1)], -1, DTid.y);
     }
-    
-    else
-    {
-        // Spin Lock to make sure headY is written
-        int headY = HEAD[int3(u, v, 1)]; //HEAD.Load(int4(u, v, 1, 0)).x;
+	/////////////////////////////////////////////////////////////////////////////////
+
+    else{
+		/////////////////////////////////////////////////////////////////////////////////
+		// y-Wert noch besorgen
+        headY = HEAD[int3(u, v, 1)];
+		InterlockedCompareExchange(HEAD[int3(u, v, 1)], -1, -1, headY);
+
         [allow_uav_condition]
-        while (headY == -1)
-        {
-            headY = HEAD[int3(u, v, 1)]; //HEAD.Load(int4(u, v, 1, 0)).x;
+        while (headY == -1){
+			InterlockedCompareExchange(HEAD[int3(u, v, 1)], -1, -1, headY);
         }
+		/////////////////////////////////////////////////////////////////////////////////
 
-        // headX and headY are written
 
-        int tailX = -2;
-        InterlockedCompareExchange(TAIL[int3(headX, headY, 0)], -1, DTid.x, tailX);
-        if (tailX == -1)
-        {
-            InterlockedCompareStore(TAIL[int3(u, v, 1)], -1, DTid.y);
+		/////////////////////////////////////////////////////////////////////////////////
+		// Erster Versuch bei TAIL
+		InterlockedCompareExchange(TAIL[int3(headX, headY, 0)], -1, DTid.x, tailX);
 
+
+		/////////////////////////////////////////////////////////////////////////////////
+		// tailY besorgen
+		InterlockedCompareExchange(TAIL[int3(headX, headY, 1)], -1, -1, tailY);
+		[allow_uav_condition]
+		while (tailY == -1) {
+			InterlockedCompareExchange(TAIL[int3(headX, headY, 1)], -1, -1, tailY);
+		}
+		/////////////////////////////////////////////////////////////////////////////////
+
+
+
+        if (tailX == -1){
+            InterlockedCompareStore(TAIL[int3(headX, headY, 1)], -1, DTid.y);
         }
-        else
-        {
-            // while loop to search for free index
+		/////////////////////////////////////////////////////////////////////////////////
+
+
+		/////////////////////////////////////////////////////////////////////////////////
+		// Weitere Versuche im TAIL
+        else{
             [allow_uav_condition]
-            while (tailX != -1)
-            {
-                // spin lock to make sure that tailY ia written
-                int tailY = TAIL[int3(u, v, 1)]; //HEAD.Load(int4(u, v, 1, 0)).x;
-                [allow_uav_condition]
-                while (tailY == -1)
-                {
-                    tailY = TAIL[int3(u, v, 1)]; //TAIL.Load(int4(u, v, 1, 0)).x;
-
-                }
-
-                // tailX and tailY are written
+            while (tailX != -1){
+				/////////////////////////////////////////////////////////////////////////////////
+				// Weitere Versuche im TAIL
+				saveX = tailX;
                 InterlockedCompareExchange(TAIL[int3(tailX, tailY, 0)], -1, DTid.x, tailX);
-                if (tailX == -1)
-                {
-                    InterlockedCompareStore(TAIL[int3(u, v, 1)], -1, DTid.y);
-
+                if (tailX == -1){
+                    InterlockedCompareStore(TAIL[int3(saveX, tailY, 1)], -1, DTid.y);
                 }
+				else {
+					/////////////////////////////////////////////////////////////////////////////////
+					// tailY updaten
+					saveY = tailY;
+					InterlockedCompareExchange(TAIL[int3(saveX, tailY, 1)], -1, -1, tailY);
+					[allow_uav_condition]
+					while (tailY == -1) {
+						InterlockedCompareExchange(TAIL[int3(saveX, saveY, 1)], -1, -1, tailY);
+					}
+					/////////////////////////////////////////////////////////////////////////////////
+				}
             
             }
         }
-
-
+		/////////////////////////////////////////////////////////////////////////////////
     }
     /*
 
