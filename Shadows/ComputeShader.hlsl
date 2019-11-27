@@ -55,8 +55,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // IZB
 
-    int u = lightSpacePosition.x * 80.0f;
-    int v = lightSpacePosition.y * 45.0f;
+    int u = lightSpacePosition.x * 1000.0f;
+    int v = lightSpacePosition.y * 1000.0f;
 
 	
 	// PSEUDOCODE IZB
@@ -83,9 +83,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
 		int bla = 0;
 		[allow_uav_condition]
-		while (headY == -1 && bla < 100) {
+		while (headY == -1) {
 			InterlockedCompareExchange(HEAD[int3(u, v, 1)], -1, -1, headY);
-			++bla;
 		}
 		/////////////////////////////////////////////////////////////////////////////////
 
@@ -113,7 +112,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 			int blub = 0;
 
             [allow_uav_condition]
-            while (tailX != -1 && blub < 20){
+            while (tailX != -1 && blub < 3){
 				++blub;
 				/////////////////////////////////////////////////////////////////////////////////
 				// Versuch in TAIL zu schreiben
@@ -130,8 +129,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
 					InterlockedCompareExchange(TAIL[int3(saveX, tailY, 1)], -1, -1, tailY);
 					[allow_uav_condition]
-					while (tailY == -1 && blib < 20) {
-						++blib;
+					while (tailY == -1) {
 						InterlockedCompareExchange(TAIL[int3(saveX, saveY, 1)], -1, -1, tailY);
 					}
 					/////////////////////////////////////////////////////////////////////////////////

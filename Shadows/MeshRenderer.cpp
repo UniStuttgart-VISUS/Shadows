@@ -25,8 +25,8 @@
 // Constants
 static const float ShadowNearClip = 1.0f;
 static const bool UseComputeReduction = true;
-static const int headTextureWidth = 80;
-static const int headTextureHeight = 45;
+static const int headTextureWidth = 1000;
+static const int headTextureHeight = 1000;
 
 // Finds the approximate smallest enclosing bounding sphere for a set of points. Based on
 // "An Efficient Bounding Sphere", by Jack Ritter.

@@ -187,7 +187,7 @@ float4 AdaptLuminance(in PSInput input) : SV_Target
 
 Texture2D<float> DepthTexture : register(t0);
 Texture2DMS<float> DepthTextureMSAA : register(t0);
-Texture2D<float4> TargetTexture : register(t0);
+Texture2D<int> TargetTexture : register(t0);
 
 float4 DrawDepth(in PSInput input) : SV_Target
 {
