@@ -749,7 +749,6 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	context->UpdateSubresource(headTextureStaging, 0, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
 	context->UpdateSubresource(headTextureStaging, 1, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
 
-	context->CopyResource(headTexture, headTextureStaging);
 
 
 	// TAIL
@@ -787,8 +786,6 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	UINT SrcDepthPitchTail = SrcRowPitchTail * tailTextureStagingDesc.Height;
 	context->UpdateSubresource(tailTextureStaging, 0, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
 	context->UpdateSubresource(tailTextureStaging, 1, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
-	context->CopyResource(tailTexture, tailTextureStaging);
-
 
 	// create UAV for head 
 	D3D11_UNORDERED_ACCESS_VIEW_DESC headUAVDesc;
@@ -1830,11 +1827,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	ClearCSInputs(context);
 	ClearCSOutputs(context);
 
-	if (AppSettings::DebugMode == DebugMode::ComputeShader) {
-		return renderTarget;
-	}
-	if (AppSettings::DebugMode == DebugMode::TAIL) {
-		return tailTexture;
-	}
+	return renderTarget;
 }
 

@@ -74,19 +74,17 @@ void main(uint3 DTid : SV_DispatchThreadID)
         InterlockedCompareStore(HEAD[int3(u, v, 1)], -1, DTid.y);
     }
 	/////////////////////////////////////////////////////////////////////////////////
-	
-	else {
+
+    else{
 		/////////////////////////////////////////////////////////////////////////////////
 		// y-Wert noch besorgen
-		headY = HEAD[int3(u, v, 1)];
+        headY = HEAD[int3(u, v, 1)];
 		InterlockedCompareExchange(HEAD[int3(u, v, 1)], -1, -1, headY);
 
-		int bla = 0;
-		[allow_uav_condition]
-		while (headY == -1 && bla < 100) {
+        [allow_uav_condition]
+        while (headY == -1){
 			InterlockedCompareExchange(HEAD[int3(u, v, 1)], -1, -1, headY);
-			++bla;
-		}
+        }
 		/////////////////////////////////////////////////////////////////////////////////
 
 
@@ -94,29 +92,31 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		// Erster Versuch bei TAIL
 		InterlockedCompareExchange(TAIL[int3(headX, headY, 0)], -1, DTid.x, tailX);
 
-		if (tailX == -1) {
-			InterlockedCompareStore(TAIL[int3(headX, headY, 1)], -1, DTid.y);
+
+		/////////////////////////////////////////////////////////////////////////////////
+		// tailY besorgen
+		InterlockedCompareExchange(TAIL[int3(headX, headY, 1)], -1, -1, tailY);
+		[allow_uav_condition]
+		while (tailY == -1) {
+			InterlockedCompareExchange(TAIL[int3(headX, headY, 1)], -1, -1, tailY);
 		}
 		/////////////////////////////////////////////////////////////////////////////////
-		
+
+
+
+        if (tailX == -1){
+            InterlockedCompareStore(TAIL[int3(headX, headY, 1)], -1, DTid.y);
+        }
+		/////////////////////////////////////////////////////////////////////////////////
+
+
 		/////////////////////////////////////////////////////////////////////////////////
 		// Weitere Versuche im TAIL
         else{
-			/////////////////////////////////////////////////////////////////////////////////
-			// tailY besorgen
-			InterlockedCompareExchange(TAIL[int3(headX, headY, 1)], -1, -1, tailY);
-			[allow_uav_condition]
-			while (tailY == -1) {
-				InterlockedCompareExchange(TAIL[int3(headX, headY, 1)], -1, -1, tailY);
-			}
-			/////////////////////////////////////////////////////////////////////////////////
-			int blub = 0;
-
             [allow_uav_condition]
-            while (tailX != -1 && blub < 20){
-				++blub;
+            while (tailX != -1){
 				/////////////////////////////////////////////////////////////////////////////////
-				// Versuch in TAIL zu schreiben
+				// Weitere Versuche im TAIL
 				saveX = tailX;
                 InterlockedCompareExchange(TAIL[int3(tailX, tailY, 0)], -1, DTid.x, tailX);
                 if (tailX == -1){
@@ -124,14 +124,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 }
 				else {
 					/////////////////////////////////////////////////////////////////////////////////
-					// Versuch gescheiter. Noch tailY updaten (tailX ist 
+					// tailY updaten
 					saveY = tailY;
-					int blib = 0;
-
 					InterlockedCompareExchange(TAIL[int3(saveX, tailY, 1)], -1, -1, tailY);
 					[allow_uav_condition]
-					while (tailY == -1 && blib < 20) {
-						++blib;
+					while (tailY == -1) {
 						InterlockedCompareExchange(TAIL[int3(saveX, saveY, 1)], -1, -1, tailY);
 					}
 					/////////////////////////////////////////////////////////////////////////////////
@@ -141,7 +138,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
         }
 		/////////////////////////////////////////////////////////////////////////////////
     }
-	
     /*
 
 	if (HEAD[int3(u, v, 0)] == -1 && HEAD[int3(u, v, 1)] == -1)
