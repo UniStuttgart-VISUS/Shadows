@@ -83,12 +83,14 @@ static const char* ShadowAnisotropyLabels[5] =
     "16x",
 };
 
-static const char* DebugModeLabels[5] = {
+static const char* DebugModeLabels[7] = {
 	"None",
 	"DepthOnly",
 	"Position",
 	"VisualizeShadowMap",
 	"ComputeShader",
+	"Head",
+	"Tail",
 };
 
 namespace AppSettings
@@ -147,7 +149,7 @@ namespace AppSettings
     {
         TwBar* tweakBar = Settings.TweakBar();
 
-		DebugMode.Initialize(tweakBar, "DebugMode", "Debug", "DebugMode", "The debug mode to display", DebugMode::None, 5, DebugModeLabels);
+		DebugMode.Initialize(tweakBar, "DebugMode", "Debug", "DebugMode", "The debug mode to display", DebugMode::None, 7, DebugModeLabels);
 		Settings.AddSetting(&DebugMode);
 
         CurrentScene.Initialize(tweakBar, "CurrentScene", "SceneControls", "Current Scene", "The scene to render", Scene::PowerPlant, 3, SceneLabels);

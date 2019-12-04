@@ -253,10 +253,10 @@ void ShadowsApp::Render(const Timer& timer)
 	if (AppSettings::DebugMode == DebugMode::Position) {
 		postProcessor.VisualizePosition(depthBuffer, deviceManager.BackBuffer());
 	}
-	if (AppSettings::DebugMode == DebugMode::ComputeShader) {
-		ID3D11Texture2D* test = meshRenderer.RenderIZB(context, depthBuffer, camera);
-		postProcessor.VisualizeTexture(*test, deviceManager.BackBuffer());
-	}
+	if (AppSettings::DebugMode == DebugMode::Head || AppSettings::DebugMode == DebugMode::Tail) {
+		ID3D11Texture2D* texture = meshRenderer.RenderIZB(context, depthBuffer, camera);
+		postProcessor.VisualizeTexture(*texture, deviceManager.BackBuffer());
+	}	
 	
 	ID3D11RenderTargetView* renderTargets[1] = { deviceManager.BackBuffer() };
 	context->OMSetRenderTargets(1, renderTargets, NULL);
