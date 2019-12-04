@@ -20,6 +20,32 @@ RWTexture2D<float4> Output : register(u0);
 RWTexture2DArray<int> HEAD : register(u1);
 RWTexture2DArray<int> TAIL : register(u2);
 
+// Hilfsfunktion Dreieckszahl
+uint f(uint w)
+{
+    return (w * (w + 1)) / 2;
+}
+
+// Hilfsfunktion untere Dreieckswurzel
+uint q(uint z)
+{
+    return floor((sqrt(8 * z + 1) - 1) / 2);
+}
+
+// returns a single, unique value given two integer values x and y
+int pairingFunction(int2 tuple)
+{
+    return tuple.y + 0.5 * (tuple.x + tuple.y) * (tuple.x + tuple.y + 1);
+}
+
+// calculates the inverse pairing function of an intger z to get x and y
+int2 inversePairingFunction(int z)
+{
+    int pi2 = z - f(q(z));
+    int pi1 = q(z) - pi2;
+    return int2(pi1, pi2);
+}
+
 [numthreads(16, 16, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
@@ -29,8 +55,14 @@ void main(uint3 DTid : SV_DispatchThreadID)
         return;
     }
 
-	//Depth Transformation
-        float depth = Input.Load(int2(DTid.xy), 0).x;
+	// Depth Transformation
+    float depth = Input.Load(int2(DTid.xy), 0).x;
+    
+    // Discard Skybox
+    if (depth > 0.9999f)
+    {
+        return;
+    }
 
 	// Calcuate Clip Space
 	float x = (DTid.x/texData.x) * 2.0f - 1.0f;
@@ -56,109 +88,41 @@ void main(uint3 DTid : SV_DispatchThreadID)
     // IZB
 
     int u = lightSpacePosition.x * 512.0f;
-    int v = lightSpacePosition.y * 512.0f;
-
-	
-	// PSEUDOCODE IZB
-    int headX = -2;
-	int headY = -2;
-	int tailX = -2;
-	int tailY = -2;
-	int saveX;
-	int saveY;
-
-	/////////////////////////////////////////////////////////////////////////////////
-	// Bester Fall
-    InterlockedCompareExchange(HEAD[int3(u, v, 0)], -1, DTid.x, headX);
-    if (headX == -1){
-        InterlockedCompareStore(HEAD[int3(u, v, 1)], -1, DTid.y);
-    }
-	/////////////////////////////////////////////////////////////////////////////////
-	
-	else {
-		/////////////////////////////////////////////////////////////////////////////////
-		// y-Wert noch besorgen
-		headY = HEAD[int3(u, v, 1)];
-		InterlockedCompareExchange(HEAD[int3(u, v, 1)], -1, -1, headY);
-
-		int bla = 0;
-		[allow_uav_condition]
-		while (headY == -1) {
-			InterlockedCompareExchange(HEAD[int3(u, v, 1)], -1, -1, headY);
-		}
-		/////////////////////////////////////////////////////////////////////////////////
-
-
-		/////////////////////////////////////////////////////////////////////////////////
-		// Erster Versuch bei TAIL
-		InterlockedCompareExchange(TAIL[int3(headX, headY, 0)], -1, DTid.x, tailX);
-
-		if (tailX == -1) {
-			InterlockedCompareStore(TAIL[int3(headX, headY, 1)], -1, DTid.y);
-		}
-		/////////////////////////////////////////////////////////////////////////////////
-		
-		/////////////////////////////////////////////////////////////////////////////////
-		// Weitere Versuche im TAIL
-        else{
-			/////////////////////////////////////////////////////////////////////////////////
-			// tailY besorgen
-			InterlockedCompareExchange(TAIL[int3(headX, headY, 1)], -1, -1, tailY);
-			[allow_uav_condition]
-			while (tailY == -1) {
-				InterlockedCompareExchange(TAIL[int3(headX, headY, 1)], -1, -1, tailY);
-			}
-			/////////////////////////////////////////////////////////////////////////////////
-
+    int v = lightSpacePosition.y * 512.0f;    
+    
+    // NEW IZB with paired values
+    int headID = -2;
+    int tailID = -2;
+    
+    // map x and y to a single, unique integer z
+    int z = pairingFunction(DTid.xy);  
+    
+    
+    //////////////////////////////////////////////////////////////////
+    // first try HEAD
+    InterlockedCompareExchange(HEAD[int3(u, v, 0)], -1, z, headID);
+    
+    //////////////////////////////////////////////////////////////////
+    // HEAD already written, try to write TAIL
+    if (headID != -1)
+    {
+        //////////////////////////////////////////////////////////////////
+        // first try TAIL
+        int2 headPair = inversePairingFunction(headID);
+        InterlockedCompareExchange(TAIL[int3(headPair, 0)], -1, z, tailID);
+        
+        //////////////////////////////////////////////////////////////////
+        // TAIL already written, try until you reach free spot in TAIL
+        if (tailID != -1)
+        {   
             [allow_uav_condition]
-            while (tailX != -1){
-				/////////////////////////////////////////////////////////////////////////////////
-				// Versuch in TAIL zu schreiben
-				saveX = tailX;
-                InterlockedCompareExchange(TAIL[int3(tailX, tailY, 0)], -1, DTid.x, tailX);
-                if (tailX == -1){
-                    InterlockedCompareStore(TAIL[int3(saveX, tailY, 1)], -1, DTid.y);
-                }
-				else {
-					/////////////////////////////////////////////////////////////////////////////////
-					// Versuch gescheiter. Noch tailY updaten (tailX ist 
-					saveY = tailY;
-
-					InterlockedCompareExchange(TAIL[int3(saveX, tailY, 1)], -1, -1, tailY);
-					[allow_uav_condition]
-					while (tailY == -1) {
-						InterlockedCompareExchange(TAIL[int3(saveX, saveY, 1)], -1, -1, tailY);
-					}
-					/////////////////////////////////////////////////////////////////////////////////
-				}
-            
+            while (tailID != -1)
+            {  
+                //////////////////////////////////////////////////////////////////
+                // all other tries in TAIL
+                int2 tailPair = inversePairingFunction(tailID);
+                InterlockedCompareExchange(TAIL[int3(tailPair, 0)], -1, z, tailID);            
             }
         }
-		/////////////////////////////////////////////////////////////////////////////////
     }
-	
-    /*
-
-	if (HEAD[int3(u, v, 0)] == -1 && HEAD[int3(u, v, 1)] == -1)
-	{
-		//HEAD[int3(u, v, 0)] = DTid.x;
-		//HEAD[int3(u, v, 1)] = DTid.y;
-        InterlockedCompareStore(HEAD[int3(u, v, 0)], -1, DTid.x);
-        InterlockedCompareStore(HEAD[int3(u, v, 1)], -1, DTid.y);
-
-	}
-	else
-    {
-        int2 index = int2(HEAD[int3(u, v, 0)], HEAD[int3(u, v, 1)]);
-        while (TAIL[int3(index, 0)] != -1 || TAIL[int3(index, 1)] != -1)
-        {
-            index = int2(TAIL[int3(index, 0)], TAIL[int3(index, 1)]);
-        }
-        //TAIL[int3(index, 0)] = DTid.x;
-        //TAIL[int3(index, 1)] = DTid.y;
-        InterlockedCompareStore(TAIL[int3(index, 0)], -1, DTid.x);
-        InterlockedCompareStore(TAIL[int3(index, 1)], -1, DTid.y);
-        
-
-    }*/	
 }
