@@ -17,8 +17,8 @@ cbuffer CSConstants : register(b1)
 
 Texture2DMS<float4> Input : register(t0);
 RWTexture2D<float4> Output : register(u0);
-RWTexture2DArray<int> HEAD : register(u1);
-RWTexture2DArray<int> TAIL : register(u2);
+RWTexture2D<int> HEAD : register(u1);
+RWTexture2D<int> TAIL : register(u2);
 
 // Hilfsfunktion Dreieckszahl
 uint f(uint w)
@@ -50,23 +50,23 @@ int2 inversePairingFunction(int z)
 void main(uint3 DTid : SV_DispatchThreadID)
 {
     // check DTid
-    if (any(DTid.xy >= texSize.xy))
-    {
-        return;
-    }
+	if (any(DTid.xy >= texSize.xy))
+	{
+		return;
+	}
 
 	// Depth Transformation
-    float depth = Input.Load(int2(DTid.xy), 0).x;
+	float depth = Input.Load(int2(DTid.xy), 0).x;
     
     // Discard Skybox
-    if (depth > 0.9999f)
-    {
-        return;
-    }
+	if (depth > 0.9999f)
+	{
+		return;
+	}
 
 	// Calcuate Clip Space
-	float x = (DTid.x/texData.x) * 2.0f - 1.0f;
-	float y = (1 - (DTid.y/texData.y)) * 2.0f - 1.0f;
+	float x = (DTid.x / texData.x) * 2.0f - 1.0f;
+	float y = (1 - (DTid.y / texData.y)) * 2.0f - 1.0f;
 	float4 clipSpacePosition = float4(x, y, depth, 1.0f);
 
 	// Transformation to ViewSpace
@@ -79,50 +79,29 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	float4 worldSpacePosition = mul(viewInv, viewSpacePosition);
 
 	// Transformation to Light Space via orthographic projection
-    float4 lightSpacePosition = mul(viewProj, worldSpacePosition);
+	float4 lightSpacePosition = mul(viewProj, worldSpacePosition);
 
     
-    Output[int2(DTid.xy)] = float4(lightSpacePosition.xyz, 1.0f);
+	Output[int2(DTid.xy)] = float4(lightSpacePosition.xyz, 1.0f);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // IZB
 
-    int u = lightSpacePosition.x * 512.0f;
-    int v = lightSpacePosition.y * 512.0f;    
+	int u = lightSpacePosition.x * 512.0f;
+	int v = lightSpacePosition.y * 512.0f;
     
+	// map x and y to a single, unique integer z
+    int z = pairingFunction(DTid.xy);
+	
     // NEW IZB with paired values
-    int headID = -2;
-    int tailID = -2;
+	int lastID = -2;
     
-    // map x and y to a single, unique integer z
-    int z = pairingFunction(DTid.xy);  
-    
-    
-    //////////////////////////////////////////////////////////////////
-    // first try HEAD
-    InterlockedCompareExchange(HEAD[int3(u, v, 0)], -1, z, headID);
-    
-    //////////////////////////////////////////////////////////////////
-    // HEAD already written, try to write TAIL
-    if (headID != -1)
-    {
-        //////////////////////////////////////////////////////////////////
-        // first try TAIL
-        int2 headPair = inversePairingFunction(headID);
-        InterlockedCompareExchange(TAIL[int3(headPair, 0)], -1, z, tailID);
-        
-        //////////////////////////////////////////////////////////////////
-        // TAIL already written, try until you reach free spot in TAIL
-        if (tailID != -1)
-        {   
-            [allow_uav_condition]
-            while (tailID != -1)
-            {  
-                //////////////////////////////////////////////////////////////////
-                // all other tries in TAIL
-                int2 tailPair = inversePairingFunction(tailID);
-                InterlockedCompareExchange(TAIL[int3(tailPair, 0)], -1, z, tailID);            
-            }
-        }
-    }
+	//write index to head 
+	InterlockedExchange(HEAD[int2(u, v)], z, lastID);
+	
+	//save last index in tail 
+	TAIL[int2(DTid.xy)] = lastID;
+  
 }
+    
+    

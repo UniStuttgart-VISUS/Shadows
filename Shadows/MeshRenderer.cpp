@@ -720,7 +720,7 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	headTextureDesc.Format = DXGI_FORMAT_R32_SINT;
 	headTextureDesc.Height = headTextureHeight;
 	headTextureDesc.Width = headTextureWidth;
-	headTextureDesc.ArraySize = 2;
+	headTextureDesc.ArraySize = 1;
 	headTextureDesc.MipLevels = 1;
 	headTextureDesc.SampleDesc.Count = 1;
 	headTextureDesc.SampleDesc.Quality = 0;
@@ -734,7 +734,7 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	headTextureDescStaging.Format = DXGI_FORMAT_R32_SINT;
 	headTextureDescStaging.Height = headTextureHeight;
 	headTextureDescStaging.Width = headTextureWidth;
-	headTextureDescStaging.ArraySize = 2;
+	headTextureDescStaging.ArraySize = 1;
 	headTextureDescStaging.MipLevels = 1;
 	headTextureDescStaging.SampleDesc.Count = 1;
 	headTextureDescStaging.SampleDesc.Quality = 0;
@@ -747,7 +747,6 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	UINT SrcRowPitchHead = headTextureWidth * sizeof(DXGI_FORMAT_R32_SINT); //
 	UINT SrcDepthPitchHead = SrcRowPitchHead * headTextureHeight;
 	context->UpdateSubresource(headTextureStaging, 0, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
-	context->UpdateSubresource(headTextureStaging, 1, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
 
 	context->CopyResource(headTexture, headTextureStaging);
 
@@ -759,7 +758,7 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	tailTextureDesc.Format = DXGI_FORMAT_R32_SINT;
 	tailTextureDesc.Height = 720;	//TODO: should be context.height !!!
 	tailTextureDesc.Width = 1280;	//TODO: should be context.width !!!
-	tailTextureDesc.ArraySize = 2;
+	tailTextureDesc.ArraySize = 1;
 	tailTextureDesc.MipLevels = 1;
 	tailTextureDesc.SampleDesc.Count = 1;
 	tailTextureDesc.SampleDesc.Quality = 0;
@@ -773,7 +772,7 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	tailTextureStagingDesc.Format = DXGI_FORMAT_R32_SINT;
 	tailTextureStagingDesc.Height = 720;	//TODO: should be context.height !!!
 	tailTextureStagingDesc.Width = 1280;	//TODO: should be context.width !!!
-	tailTextureStagingDesc.ArraySize = 2;
+	tailTextureStagingDesc.ArraySize = 1;
 	tailTextureStagingDesc.MipLevels = 1;
 	tailTextureStagingDesc.SampleDesc.Count = 1;
 	tailTextureStagingDesc.SampleDesc.Quality = 0;
@@ -786,7 +785,6 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	UINT SrcRowPitchTail = tailTextureStagingDesc.Width * sizeof(DXGI_FORMAT_R32_SINT); //
 	UINT SrcDepthPitchTail = SrcRowPitchTail * tailTextureStagingDesc.Height;
 	context->UpdateSubresource(tailTextureStaging, 0, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
-	context->UpdateSubresource(tailTextureStaging, 1, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
 	context->CopyResource(tailTexture, tailTextureStaging);
 
 
@@ -794,20 +792,14 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	D3D11_UNORDERED_ACCESS_VIEW_DESC headUAVDesc;
 	ZeroMemory(&headUAVDesc, sizeof(headUAVDesc));
 	headUAVDesc.Format = DXGI_FORMAT_R32_SINT;
-	headUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
-	headUAVDesc.Texture2DArray.ArraySize = 2;
-	headUAVDesc.Texture2DArray.FirstArraySlice = 0;
-	headUAVDesc.Texture2DArray.MipSlice = 0;
+	headUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
 	DXCall(device->CreateUnorderedAccessView(headTexture, &headUAVDesc, &headUAV));
 
 	// create UAV for tail
 	D3D11_UNORDERED_ACCESS_VIEW_DESC tailUAVDesc;
 	ZeroMemory(&tailUAVDesc, sizeof(tailUAVDesc));
 	tailUAVDesc.Format = DXGI_FORMAT_R32_SINT;
-	tailUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
-	tailUAVDesc.Texture2DArray.ArraySize = 2;
-	tailUAVDesc.Texture2DArray.MipSlice = 0;
-	tailUAVDesc.Texture2DArray.FirstArraySlice = 0;
+	tailUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
 	DXCall(device->CreateUnorderedAccessView(tailTexture, &tailUAVDesc, &tailUAV));
 
 	///////////////////////////////////////////////////////////////////////////////////////////
