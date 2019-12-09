@@ -13,6 +13,7 @@ cbuffer CSConstants : register(b1)
 	float4x4 viewProj;
     float4 texData;
     uint4 texSize;
+    uint4 headSize;
 };
 
 Texture2DMS<float4> Input : register(t0);
@@ -81,14 +82,13 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	// Transformation to Light Space via orthographic projection
 	float4 lightSpacePosition = mul(viewProj, worldSpacePosition);
 
-    
-	Output[int2(DTid.xy)] = float4(lightSpacePosition.xyz, 1.0f);
+    Output[int2(DTid.xy)] = float4(lightSpacePosition.xyz, 1.0f);
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // IZB
 
-	int u = lightSpacePosition.x * 512.0f;
-	int v = lightSpacePosition.y * 512.0f;
+	int u = lightSpacePosition.x * headSize.x;
+	int v = lightSpacePosition.y * headSize.y;
     
 	// map x and y to a single, unique integer z
     int z = pairingFunction(DTid.xy);
@@ -101,6 +101,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	
 	//save last index in tail 
 	TAIL[int2(DTid.xy)] = lastID;
+    
+
   
 }
     

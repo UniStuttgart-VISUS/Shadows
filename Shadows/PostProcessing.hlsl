@@ -188,6 +188,7 @@ float4 AdaptLuminance(in PSInput input) : SV_Target
 Texture2D<float> DepthTexture : register(t0);
 Texture2DMS<float> DepthTextureMSAA : register(t0);
 Texture2D<int> TargetTexture : register(t0);
+Texture2D<float4> TargetTextureFloat : register(t0);
 
 float4 DrawDepth(in PSInput input) : SV_Target
 {
@@ -226,3 +227,9 @@ float4 visualizeTexture(in PSInput input) : SV_TARGET
 {
     return TargetTexture.Load(int3(input.PositionSS.xy, 0));
 }
+
+float4 visualizeTextureFloat(in PSInput input) : SV_TARGET
+{
+    return TargetTextureFloat.Load(int3(input.PositionSS.xy, 0));
+}
+

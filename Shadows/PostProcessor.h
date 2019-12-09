@@ -71,6 +71,7 @@ protected:
     PixelShaderPtr drawDepthMSAA;
 	PixelShaderPtr visualizeReconstructedPosition;
 	PixelShaderPtr visualizeTexture;
+	PixelShaderPtr visualizeTextureFloat;
 
     RenderTarget2D adaptedLuminance[2];
     RenderTarget2D exposureMap;

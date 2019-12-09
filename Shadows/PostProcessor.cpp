@@ -38,6 +38,7 @@ void PostProcessor::Initialize(ID3D11Device* device)
     drawDepthMSAA = CompilePSFromFile(device, L"PostProcessing.hlsl", "DrawDepthMSAA");
 	visualizeReconstructedPosition = CompilePSFromFile(device, L"PostProcessing.hlsl", "visualizeReconstructedPosition");
 	visualizeTexture = CompilePSFromFile(device, L"PostProcessing.hlsl", "visualizeTexture");
+	visualizeTextureFloat = CompilePSFromFile(device, L"PostProcessing.hlsl", "visualizeTextureFloat");
 
     // Create average luminance calculation targets
     currLumTarget = 0;
@@ -171,6 +172,15 @@ void PostProcessor::VisualizeTexture(ID3D11Texture2D& texture, ID3D11RenderTarge
 	SRViewDesc.Texture2D.MostDetailedMip = 0;
 	SRViewDesc.Texture2D.MipLevels = 1;
 	device->CreateShaderResourceView(&texture, &SRViewDesc, &SRView);
-	PostProcess(SRView, rt, visualizeTexture, L"Visualize Texture");
+	//if case use float 
+	if (AppSettings::DebugMode == DebugMode::ComputeShader) {
+		PostProcess(SRView, rt, visualizeTextureFloat, L"Visualize float Texture");
+	}
+	//use int
+	else
+	{
+		PostProcess(SRView, rt, visualizeTexture, L"Visualize Texture");
+	}
+	
 
 }

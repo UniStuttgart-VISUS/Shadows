@@ -1785,6 +1785,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 {
 	///////////////////////////////////////////////////////////////////////////////////////////
 	// Constant Buffer Setup
+	ProfileBlock block(L"IZB Creation");
 	computeShaderConstants.Data.viewInv = Float4x4::Invert(camera.ViewMatrix());
 	computeShaderConstants.Data.projInv = Float4x4::Invert(camera.ProjectionMatrix());
 	computeShaderConstants.Data.viewProj = MakeGlobalShadowMatrix(camera);
@@ -1796,6 +1797,10 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.Data.texSize.y = depthBuffer.Height;
 	computeShaderConstants.Data.texSize.z = 0;
 	computeShaderConstants.Data.texSize.w = 0;
+	computeShaderConstants.Data.headSize.x = headTextureWidth;
+	computeShaderConstants.Data.headSize.y = headTextureHeight;
+	computeShaderConstants.Data.headSize.z = 0;
+	computeShaderConstants.Data.headSize.w = 0;
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);
 
@@ -1827,6 +1832,9 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	}
 	if (AppSettings::DebugMode == DebugMode::Tail) {
 		return tailTexture;
+	}
+	if (AppSettings::DebugMode == DebugMode::ComputeShader) {
+		return renderTarget;
 	}
 }
 

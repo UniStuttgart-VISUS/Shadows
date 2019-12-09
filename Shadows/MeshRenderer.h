@@ -245,6 +245,7 @@ protected:
 		Float4x4 viewProj;
 		float4 texData;
 		uint4 texSize;
+		uint4 headSize;
 	};
 
 	ConstantBuffer<DepthOnlyConstants> depthOnlyConstants;
