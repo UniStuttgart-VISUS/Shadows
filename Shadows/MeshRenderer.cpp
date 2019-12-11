@@ -806,6 +806,15 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	tailUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
 	DXCall(device->CreateUnorderedAccessView(tailTexture, &tailUAVDesc, &tailUAV));
 
+	//create UAV for vertex buffer
+	//auto vertices = scene.PositionsVB;
+	//D3D11_UNORDERED_ACCESS_VIEW_DESC verticesUAVDesc;
+	//ZeroMemory(&verticesUAVDesc, sizeof(verticesUAVDesc));
+	//DXCall(device->CreateUnorderedAccessView(vertices, &verticesUAVDesc, &verticesUAV));
+
+
+
+
 	///////////////////////////////////////////////////////////////////////////////////////////
 	// QUERY
 	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));

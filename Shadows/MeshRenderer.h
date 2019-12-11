@@ -266,6 +266,7 @@ protected:
 	ID3D11UnorderedAccessView* UAView;
 	ID3D11UnorderedAccessView* headUAV;
 	ID3D11UnorderedAccessView* tailUAV;
+	ID3D11UnorderedAccessView* verticesUAV;
 
 	ID3D11Texture2D* renderTarget;
 	ID3D11Texture2D* headTexture;
