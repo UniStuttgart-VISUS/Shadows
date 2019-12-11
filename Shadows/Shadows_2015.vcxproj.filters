@@ -277,5 +277,6 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="ComputeShader.hlsl" />
+    <FxCompile Include="IZBRendering.hlsl" />
   </ItemGroup>
 </Project>

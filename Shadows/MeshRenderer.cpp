@@ -424,6 +424,7 @@ void MeshRenderer::LoadShaders()
 	depthReductionCS = CompileCSFromFile(device, L"DepthReduction.hlsl", "DepthReductionCS",
 		"cs_5_0", opts);
 	computeshader = CompileCSFromFile(device, L"ComputeShader.hlsl", "main", "cs_5_0");
+	izbrendering = CompileCSFromFile(device, L"IZBRendering.hlsl", "main", "cs_5_0");
 
 	clearArgsBuffer = CompileCSFromFile(device, L"GPUBatch.hlsl", "ClearArgsBuffer");
 	cullDrawCalls = CompileCSFromFile(device, L"GPUBatch.hlsl", "CullDrawCalls");
@@ -686,6 +687,9 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	// Compute Shader
 	ID3D11ComputeShader* computeshader = nullptr;
 	DXCall(device->CreateComputeShader(::ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &computeshader));
+
+	ID3D11ComputeShader* izbrendering = nullptr;
+	DXCall(device->CreateComputeShader(::IZBRenderingByteCode, sizeof(::IZBRenderingByteCode), nullptr, &izbrendering));
 
 	// Compute Shader Input/Output
 	D3D11_TEXTURE2D_DESC renderTargetDesc;
@@ -1785,7 +1789,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 {
 	///////////////////////////////////////////////////////////////////////////////////////////
 	// Constant Buffer Setup
-	ProfileBlock block(L"IZB Creation");
 	computeShaderConstants.Data.viewInv = Float4x4::Invert(camera.ViewMatrix());
 	computeShaderConstants.Data.projInv = Float4x4::Invert(camera.ProjectionMatrix());
 	computeShaderConstants.Data.viewProj = MakeGlobalShadowMatrix(camera);
@@ -1817,15 +1820,36 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	context->CSSetUnorderedAccessViews(0, 3, uavs, nullptr);
 	uint32 dispatchX = depthBuffer.Width / 16;
 	uint32 dispatchY = depthBuffer.Height / 16;
+
+	ProfileBlock block(L"IZB Creation");
+
 	context->Dispatch(dispatchX, dispatchY, 1);
 
 	// wait for compute shader
 	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
 
-	//////////////////////////////////////////////////////////////////////////
 	// Cleanup
 	ClearCSInputs(context);
 	ClearCSOutputs(context);
+
+	//////////////////////////////////////////////////////////////////////////
+	// Start IZBRendering Compute Shader
+
+	//Setup for dispatch
+	SetCSShader(context, izbrendering);
+	//SetCSInputs(context, depthBuffer.SRView);
+	//ID3D11UnorderedAccessView* uavs[3] = { UAView, headUAV, tailUAV };
+	//context->CSSetUnorderedAccessViews(0, 3, uavs, nullptr);
+	 dispatchX = 300000 / 256 + 1;
+
+	ProfileBlock block1(L"IZB Rendering");
+
+	context->Dispatch(dispatchX, 1, 1);
+
+	// wait for compute shader
+	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+
+
 
 	if (AppSettings::DebugMode == DebugMode::Head) {
 		return headTexture;

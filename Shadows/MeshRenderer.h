@@ -19,6 +19,7 @@
 #include "SampleFramework11/SH.h"
 #include "SampleFramework11/ShaderCompilation.h"
 #include "ComputeShader.h"
+#include "IZBRendering.h"
 #include "AppSettings.h"
 #include "SharedConstants.h"
 
@@ -178,6 +179,7 @@ protected:
 	StructuredBuffer cascadePlanesBuffer;
 
 	ComputeShaderPtr computeshader;
+	ComputeShaderPtr izbrendering;
 
 	// Constant buffers
 	struct DepthOnlyConstants
