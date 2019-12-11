@@ -113,6 +113,7 @@ void ShadowsApp::Initialize()
 
 	ID3D11DeviceContext* context = deviceManager.ImmediateContext();
 
+
 	Float4x4 meshWorld = Float4x4::ScaleMatrix(MeshScales[(int)AppSettings::CurrentScene]);
 	meshRenderer.SetSceneMesh(context, &models[(int)AppSettings::CurrentScene], meshWorld);
 
@@ -121,6 +122,8 @@ void ShadowsApp::Initialize()
 	characterWorld = characterWorld * characterOrientation;
 	characterWorld.SetTranslation(CharacterPos);
 	meshRenderer.SetCharacterMesh(context, &characterMesh, characterWorld);
+
+	meshRenderer.InitializeIZB(device, deviceManager.ImmediateContext(), depthBuffer);
 
 	skybox.Initialize(device);
 

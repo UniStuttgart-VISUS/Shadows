@@ -71,6 +71,7 @@ public:
 	MeshRenderer();
 
 	void Initialize(ID3D11Device* device, ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer);
+	void InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer);
 	void SetSceneMesh(ID3D11DeviceContext* context, Model* model, const Float4x4& world);
 	void SetCharacterMesh(ID3D11DeviceContext* context, Model* model, const Float4x4& world);
 
@@ -266,6 +267,9 @@ protected:
 	ID3D11UnorderedAccessView* UAView;
 	ID3D11UnorderedAccessView* headUAV;
 	ID3D11UnorderedAccessView* tailUAV;
+
+	ID3D11UnorderedAccessView* vertexBufferUAV;
+	ID3D11UnorderedAccessView* indexBufferUAV;
 
 	ID3D11Texture2D* renderTarget;
 	ID3D11Texture2D* headTexture;

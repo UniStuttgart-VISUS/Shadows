@@ -205,7 +205,7 @@ static void ComputeBoundingSpheres(ID3D11Device* device, ID3D11DeviceContext* co
 		D3D11_BUFFER_DESC bufferDesc;
 		bufferDesc.BindFlags = 0;
 		bufferDesc.ByteWidth = mesh.NumVertices() * mesh.VertexStride();
-		bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		bufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ; 
 		bufferDesc.MiscFlags = 0;
 		bufferDesc.StructureByteStride = 0;
 		bufferDesc.Usage = D3D11_USAGE_STAGING;
@@ -682,136 +682,6 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	cascadePlanesBuffer.Initialize(device, sizeof(Float4), NumCascades * 6, true);
 
 	CreateShadowMaps();
-
-	/////////////////////////////////////////////////////////////////////////////////////////////
-	// Compute Shader
-	ID3D11ComputeShader* computeshader = nullptr;
-	DXCall(device->CreateComputeShader(::ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &computeshader));
-
-	ID3D11ComputeShader* izbrendering = nullptr;
-	DXCall(device->CreateComputeShader(::IZBRenderingByteCode, sizeof(::IZBRenderingByteCode), nullptr, &izbrendering));
-
-	// Compute Shader Input/Output
-	D3D11_TEXTURE2D_DESC renderTargetDesc;
-	ZeroMemory(&renderTargetDesc, sizeof(renderTargetDesc));
-	renderTargetDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	renderTargetDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	renderTargetDesc.Height = 720;	//TODO: should be depthBuffer.Height!!!
-	renderTargetDesc.Width = 1280;	//TODO: should be depthBuffer.Width!!!
-	renderTargetDesc.ArraySize = 1;
-	renderTargetDesc.MipLevels = 1;
-	renderTargetDesc.SampleDesc.Count = 1;
-	renderTargetDesc.SampleDesc.Quality = 0;
-	renderTargetDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&renderTargetDesc, nullptr, &renderTarget));
-
-	//Create UAV for Compute shader
-	D3D11_UNORDERED_ACCESS_VIEW_DESC uavCS;
-	ZeroMemory(&uavCS, sizeof(uavCS));
-	uavCS.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	uavCS.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	uavCS.Texture2D.MipSlice = 0;
-	DXCall(device->CreateUnorderedAccessView(renderTarget, &uavCS, &UAView));
-
-	///////////////////////////////////////////////////////////////////////////////////////////
-	// IZB TEXTURES
-
-	// HEAD
-	D3D11_TEXTURE2D_DESC headTextureDesc;
-	ZeroMemory(&headTextureDesc, sizeof(headTextureDesc));
-	headTextureDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	headTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	headTextureDesc.Format = DXGI_FORMAT_R32_SINT;
-	headTextureDesc.Height = headTextureHeight;
-	headTextureDesc.Width = headTextureWidth;
-	headTextureDesc.ArraySize = 1;
-	headTextureDesc.MipLevels = 1;
-	headTextureDesc.SampleDesc.Count = 1;
-	headTextureDesc.SampleDesc.Quality = 0;
-	headTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&headTextureDesc, nullptr, &headTexture));
-
-	//COPY HEAD
-	D3D11_TEXTURE2D_DESC headTextureDescStaging;
-	ZeroMemory(&headTextureDescStaging, sizeof(headTextureDescStaging));
-	headTextureDescStaging.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	headTextureDescStaging.Format = DXGI_FORMAT_R32_SINT;
-	headTextureDescStaging.Height = headTextureHeight;
-	headTextureDescStaging.Width = headTextureWidth;
-	headTextureDescStaging.ArraySize = 1;
-	headTextureDescStaging.MipLevels = 1;
-	headTextureDescStaging.SampleDesc.Count = 1;
-	headTextureDescStaging.SampleDesc.Quality = 0;
-	headTextureDescStaging.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&headTextureDescStaging, nullptr, &headTextureStaging));
-
-	//Update HeadTextureCopy Texture
-	int sizeHead = headTextureWidth * headTextureHeight;
-	std::vector<int> initHead(sizeHead, -1);
-	UINT SrcRowPitchHead = headTextureWidth * sizeof(DXGI_FORMAT_R32_SINT); //
-	UINT SrcDepthPitchHead = SrcRowPitchHead * headTextureHeight;
-	context->UpdateSubresource(headTextureStaging, 0, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
-
-	context->CopyResource(headTexture, headTextureStaging);
-
-
-	// TAIL
-	D3D11_TEXTURE2D_DESC tailTextureDesc;
-	ZeroMemory(&tailTextureDesc, sizeof(tailTextureDesc));
-	tailTextureDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	tailTextureDesc.Format = DXGI_FORMAT_R32_SINT;
-	tailTextureDesc.Height = 720;	//TODO: should be context.height !!!
-	tailTextureDesc.Width = 1280;	//TODO: should be context.width !!!
-	tailTextureDesc.ArraySize = 1;
-	tailTextureDesc.MipLevels = 1;
-	tailTextureDesc.SampleDesc.Count = 1;
-	tailTextureDesc.SampleDesc.Quality = 0;
-	tailTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&tailTextureDesc, nullptr, &tailTexture));
-
-	//COPY TAIL
-
-	D3D11_TEXTURE2D_DESC tailTextureStagingDesc;
-	ZeroMemory(&tailTextureStagingDesc, sizeof(tailTextureStagingDesc));
-	tailTextureStagingDesc.Format = DXGI_FORMAT_R32_SINT;
-	tailTextureStagingDesc.Height = 720;	//TODO: should be context.height !!!
-	tailTextureStagingDesc.Width = 1280;	//TODO: should be context.width !!!
-	tailTextureStagingDesc.ArraySize = 1;
-	tailTextureStagingDesc.MipLevels = 1;
-	tailTextureStagingDesc.SampleDesc.Count = 1;
-	tailTextureStagingDesc.SampleDesc.Quality = 0;
-	tailTextureStagingDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&tailTextureStagingDesc, nullptr, &tailTextureStaging));
-
-	//Update TAIL COPY Texture
-	int sizeTail = tailTextureStagingDesc.Width * tailTextureStagingDesc.Height;
-	std::vector<int> initTail(sizeTail, -1);
-	UINT SrcRowPitchTail = tailTextureStagingDesc.Width * sizeof(DXGI_FORMAT_R32_SINT); //
-	UINT SrcDepthPitchTail = SrcRowPitchTail * tailTextureStagingDesc.Height;
-	context->UpdateSubresource(tailTextureStaging, 0, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
-	context->CopyResource(tailTexture, tailTextureStaging);
-
-
-	// create UAV for head 
-	D3D11_UNORDERED_ACCESS_VIEW_DESC headUAVDesc;
-	ZeroMemory(&headUAVDesc, sizeof(headUAVDesc));
-	headUAVDesc.Format = DXGI_FORMAT_R32_SINT;
-	headUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	DXCall(device->CreateUnorderedAccessView(headTexture, &headUAVDesc, &headUAV));
-
-	// create UAV for tail
-	D3D11_UNORDERED_ACCESS_VIEW_DESC tailUAVDesc;
-	ZeroMemory(&tailUAVDesc, sizeof(tailUAVDesc));
-	tailUAVDesc.Format = DXGI_FORMAT_R32_SINT;
-	tailUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	DXCall(device->CreateUnorderedAccessView(tailTexture, &tailUAVDesc, &tailUAV));
-
-	///////////////////////////////////////////////////////////////////////////////////////////
-	// QUERY
-	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
-	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
-	DXCall(device->CreateQuery(&this->queryDesc, &this->queryObj));
-	context->End(queryObj);
 
 
 }
@@ -1391,6 +1261,7 @@ void MeshRenderer::SetupRenderDepthState(ID3D11DeviceContext* context, bool shad
 void MeshRenderer::RenderModelDepthCPU(ID3D11DeviceContext* context, const Camera& camera, const Float4x4& world,
 	MeshData& meshData)
 {
+
 	// Set constant buffers
 	depthOnlyConstants.Data.World = Float4x4::Transpose(world);
 	depthOnlyConstants.Data.ViewProjection = Float4x4::Transpose(camera.ViewProjectionMatrix());
@@ -1784,6 +1655,158 @@ void MeshRenderer::RenderShadowMapGPU(ID3D11DeviceContext* context, const Camera
 	}
 }
 
+void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer) {
+
+	/////////////////////////////////////////////////////////////////////////////////////////////
+// Compute Shader
+	ID3D11ComputeShader* computeshader = nullptr;
+	DXCall(device->CreateComputeShader(::ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &computeshader));
+
+	ID3D11ComputeShader* izbrendering = nullptr;
+	DXCall(device->CreateComputeShader(::IZBRenderingByteCode, sizeof(::IZBRenderingByteCode), nullptr, &izbrendering));
+
+	// Compute Shader Input/Output
+	D3D11_TEXTURE2D_DESC renderTargetDesc;
+	ZeroMemory(&renderTargetDesc, sizeof(renderTargetDesc));
+	renderTargetDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	renderTargetDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	renderTargetDesc.Height = 720;
+	renderTargetDesc.Width = 1280;	
+	renderTargetDesc.ArraySize = 1;
+	renderTargetDesc.MipLevels = 1;
+	renderTargetDesc.SampleDesc.Count = 1;
+	renderTargetDesc.SampleDesc.Quality = 0;
+	renderTargetDesc.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&renderTargetDesc, nullptr, &renderTarget));
+
+	//Create UAV for Compute shader
+	D3D11_UNORDERED_ACCESS_VIEW_DESC uavCS;
+	ZeroMemory(&uavCS, sizeof(uavCS));
+	uavCS.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	uavCS.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	uavCS.Texture2D.MipSlice = 0;
+	DXCall(device->CreateUnorderedAccessView(renderTarget, &uavCS, &UAView));
+
+	///////////////////////////////////////////////////////////////////////////////////////////
+	// IZB TEXTURES
+
+	// HEAD
+	D3D11_TEXTURE2D_DESC headTextureDesc;
+	ZeroMemory(&headTextureDesc, sizeof(headTextureDesc));
+	headTextureDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	headTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	headTextureDesc.Format = DXGI_FORMAT_R32_SINT;
+	headTextureDesc.Height = headTextureHeight;
+	headTextureDesc.Width = headTextureWidth;
+	headTextureDesc.ArraySize = 1;
+	headTextureDesc.MipLevels = 1;
+	headTextureDesc.SampleDesc.Count = 1;
+	headTextureDesc.SampleDesc.Quality = 0;
+	headTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&headTextureDesc, nullptr, &headTexture));
+
+	//COPY HEAD
+	D3D11_TEXTURE2D_DESC headTextureDescStaging;
+	ZeroMemory(&headTextureDescStaging, sizeof(headTextureDescStaging));
+	headTextureDescStaging.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	headTextureDescStaging.Format = DXGI_FORMAT_R32_SINT;
+	headTextureDescStaging.Height = headTextureHeight;
+	headTextureDescStaging.Width = headTextureWidth;
+	headTextureDescStaging.ArraySize = 1;
+	headTextureDescStaging.MipLevels = 1;
+	headTextureDescStaging.SampleDesc.Count = 1;
+	headTextureDescStaging.SampleDesc.Quality = 0;
+	headTextureDescStaging.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&headTextureDescStaging, nullptr, &headTextureStaging));
+
+	//Update HeadTextureCopy Texture
+	int sizeHead = headTextureWidth * headTextureHeight;
+	std::vector<int> initHead(sizeHead, -1);
+	UINT SrcRowPitchHead = headTextureWidth * sizeof(DXGI_FORMAT_R32_SINT); //
+	UINT SrcDepthPitchHead = SrcRowPitchHead * headTextureHeight;
+	context->UpdateSubresource(headTextureStaging, 0, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
+
+	context->CopyResource(headTexture, headTextureStaging);
+
+
+	// TAIL
+	D3D11_TEXTURE2D_DESC tailTextureDesc;
+	ZeroMemory(&tailTextureDesc, sizeof(tailTextureDesc));
+	tailTextureDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	tailTextureDesc.Format = DXGI_FORMAT_R32_SINT;
+	tailTextureDesc.Height = 720;	//TODO: should be context.height !!!
+	tailTextureDesc.Width = 1280;	//TODO: should be context.width !!!
+	tailTextureDesc.ArraySize = 1;
+	tailTextureDesc.MipLevels = 1;
+	tailTextureDesc.SampleDesc.Count = 1;
+	tailTextureDesc.SampleDesc.Quality = 0;
+	tailTextureDesc.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&tailTextureDesc, nullptr, &tailTexture));
+
+	//COPY TAIL
+
+	D3D11_TEXTURE2D_DESC tailTextureStagingDesc;
+	ZeroMemory(&tailTextureStagingDesc, sizeof(tailTextureStagingDesc));
+	tailTextureStagingDesc.Format = DXGI_FORMAT_R32_SINT;
+	tailTextureStagingDesc.Height = 720;	//TODO: should be context.height !!!
+	tailTextureStagingDesc.Width = 1280;	//TODO: should be context.width !!!
+	tailTextureStagingDesc.ArraySize = 1;
+	tailTextureStagingDesc.MipLevels = 1;
+	tailTextureStagingDesc.SampleDesc.Count = 1;
+	tailTextureStagingDesc.SampleDesc.Quality = 0;
+	tailTextureStagingDesc.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&tailTextureStagingDesc, nullptr, &tailTextureStaging));
+
+	//Update TAIL COPY Texture
+	int sizeTail = tailTextureStagingDesc.Width * tailTextureStagingDesc.Height;
+	std::vector<int> initTail(sizeTail, -1);
+	UINT SrcRowPitchTail = tailTextureStagingDesc.Width * sizeof(DXGI_FORMAT_R32_SINT); //
+	UINT SrcDepthPitchTail = SrcRowPitchTail * tailTextureStagingDesc.Height;
+	context->UpdateSubresource(tailTextureStaging, 0, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
+	context->CopyResource(tailTexture, tailTextureStaging);
+
+
+	// create UAV for head 
+	D3D11_UNORDERED_ACCESS_VIEW_DESC headUAVDesc;
+	ZeroMemory(&headUAVDesc, sizeof(headUAVDesc));
+	headUAVDesc.Format = DXGI_FORMAT_R32_SINT;
+	headUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	DXCall(device->CreateUnorderedAccessView(headTexture, &headUAVDesc, &headUAV));
+
+	// create UAV for tail
+	D3D11_UNORDERED_ACCESS_VIEW_DESC tailUAVDesc;
+	ZeroMemory(&tailUAVDesc, sizeof(tailUAVDesc));
+	tailUAVDesc.Format = DXGI_FORMAT_R32_SINT;
+	tailUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	DXCall(device->CreateUnorderedAccessView(tailTexture, &tailUAVDesc, &tailUAV));
+
+	///////////////////////////////////////////////////////////////////////////////////////////
+	// QUERY
+	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
+	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
+	DXCall(device->CreateQuery(&this->queryDesc, &this->queryObj));
+	context->End(queryObj);
+
+	//RENDER IZB SETUP
+	ID3D11BufferPtr vertexBufferPtr = scene.PositionsVB;
+
+	
+	//TODO: Create UAV for vertex and index buffer
+	//CREATE UAV
+	D3D11_UNORDERED_ACCESS_VIEW_DESC vertexBufferUAVDesc;
+	ZeroMemory(&vertexBufferUAVDesc, sizeof(vertexBufferUAVDesc));
+	vertexBufferUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+	vertexBufferUAVDesc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_APPEND;
+	vertexBufferUAVDesc.Format = DXGI_FORMAT_UNKNOWN;
+	vertexBufferUAVDesc.Buffer.FirstElement = 0;
+	vertexBufferUAVDesc.Buffer.NumElements = 100;
+	//DXCall(device->CreateUnorderedAccessView(vertexBufferPtr, &vertexBufferUAVDesc, &vertexBufferUAV));
+
+	
+
+
+}
+
 // NEW
 ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer, const Camera& camera)
 {
@@ -1841,6 +1864,8 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	//ID3D11UnorderedAccessView* uavs[3] = { UAView, headUAV, tailUAV };
 	//context->CSSetUnorderedAccessViews(0, 3, uavs, nullptr);
 	 dispatchX = 300000 / 256 + 1;
+
+	
 
 	ProfileBlock block1(L"IZB Rendering");
 
