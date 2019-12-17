@@ -26,20 +26,21 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	float3 v1 = Vertices.Load(triangleIndices.y);
 	float3 v2 = Vertices.Load(triangleIndices.z);
 
-	// TRANSFORMATION TO LIGHT SPACE ( uv - COORDINATES)
-
-	//transform to world space
+	// Transformation to world space
 	float4 v0_ws = mul(float4(v0, 1.0f), meshWorld).xyzw;
 	float4 v1_ws = mul(float4(v1, 1.0f), meshWorld).xyzw;
 	float4 v2_ws = mul(float4(v2, 1.0f), meshWorld).xyzw;
 
-
+	// Transformation to Light Space via orthographic projection
+	float4 v0_ls = mul(viewProj, v0_ws);
+	float4 v1_ls = mul(viewProj, v1_ws);
+	float4 v2_ls = mul(viewProj, v1_ws);
 
 	// CALCULATE BOUNDING BOX 
-	int minX = floor(min(v0.x, min(v1.x, v2.x)));
-	int minY = floor(min(v0.y, min(v1.y, v2.y)));
-	int maxX = ceil(max(v0.x, max(v1.x, v2.x)));
-	int maxY = ceil(max(v0.y, max(v1.y, v2.y)));
+	int minX = floor(min(v0_ls.x, min(v1_ls.x, v2_ls.x)));
+	int minY = floor(min(v0_ls.y, min(v1_ls.y, v2_ls.y)));
+	int maxX = ceil(max(v0_ls.x, max(v1_ls.x, v2_ls.x)));
+	int maxY = ceil(max(v0_ls.y, max(v1_ls.y, v2_ls.y)));
 
 	// BOUNDING BOX 
 	// (minX, minY)     (maxX, minY)
