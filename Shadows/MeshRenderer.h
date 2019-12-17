@@ -88,7 +88,7 @@ public:
 	void RenderShadowMapGPU(ID3D11DeviceContext* context, const Camera& camera,
 		const Float4x4& world, const Float4x4& characterWorld);
 
-	ID3D11Texture2D* RenderIZB(ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer, const Camera& camera);
+	ID3D11Texture2D* RenderIZB(ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer, const Camera& camera, const Float4x4& meshWorld, const Float4x4& characterWorld);
 
 	void Update();
 
@@ -246,6 +246,8 @@ protected:
 		Float4x4 viewInv;
 		Float4x4 projInv;
 		Float4x4 viewProj;
+		Float4x4 meshWorld;
+		Float4x4 characterWorld;
 		float4 texData;
 		uint4 texSize;
 		uint4 headSize;

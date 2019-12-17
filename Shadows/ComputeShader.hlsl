@@ -11,6 +11,8 @@ cbuffer CSConstants : register(b1)
     float4x4 viewInv;
     float4x4 projInv;
 	float4x4 viewProj;
+	float4x4 meshWorld;
+	float4x4 characterWorld;
     float4 texData;
     uint4 texSize;
     uint4 headSize;

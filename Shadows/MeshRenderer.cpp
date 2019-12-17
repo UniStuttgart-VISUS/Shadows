@@ -1802,13 +1802,15 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 }
 
 // NEW
-ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer, const Camera& camera)
+ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer, const Camera& camera, const Float4x4& meshWorld, const Float4x4& characterWorld)
 {
 	///////////////////////////////////////////////////////////////////////////////////////////
 	// Constant Buffer Setup
 	computeShaderConstants.Data.viewInv = Float4x4::Invert(camera.ViewMatrix());
 	computeShaderConstants.Data.projInv = Float4x4::Invert(camera.ProjectionMatrix());
 	computeShaderConstants.Data.viewProj = MakeGlobalShadowMatrix(camera);
+	computeShaderConstants.Data.meshWorld = Float4x4::Transpose(meshWorld);
+	computeShaderConstants.Data.characterWorld = Float4x4::Transpose(characterWorld);
 	computeShaderConstants.Data.texData.x = static_cast<float>(depthBuffer.Width);
 	computeShaderConstants.Data.texData.y = static_cast<float>(depthBuffer.Height);
 	computeShaderConstants.Data.texData.z = 0.0f;
@@ -1854,6 +1856,9 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 
 	//Setup for dispatch
 	SetCSShader(context, izbrendering);
+	computeShaderConstants.ApplyChanges(context);
+	computeShaderConstants.SetCS(context, 1);
+
 	SetCSInputs(context, scene.Indices.SRView, vertexBufferSRV);
 	ID3D11UnorderedAccessView* uavs2[2] = {headUAV, tailUAV };
 	context->CSSetUnorderedAccessViews(0, 2, uavs2, nullptr);

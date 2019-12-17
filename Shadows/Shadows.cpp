@@ -258,7 +258,11 @@ void ShadowsApp::Render(const Timer& timer)
 	}
 	if (AppSettings::DebugMode == DebugMode::Head || AppSettings::DebugMode == DebugMode::Tail || AppSettings::DebugMode == DebugMode::ComputeShader
 		) {
-		ID3D11Texture2D* texture = meshRenderer.RenderIZB(context, depthBuffer, camera);
+		Float4x4 meshWorld = Float4x4::ScaleMatrix(MeshScales[AppSettings::CurrentScene]);
+		Float4x4 characterWorld = Float4x4::ScaleMatrix(CharacterScale);
+		Float4x4 characterOrientation = Quaternion::ToFloat4x4(AppSettings::CharacterOrientation);
+		characterWorld = characterWorld * characterOrientation;
+		ID3D11Texture2D* texture = meshRenderer.RenderIZB(context, depthBuffer, camera, meshWorld, characterWorld);
 		postProcessor.VisualizeTexture(*texture, deviceManager.BackBuffer());
 	}	
 	
