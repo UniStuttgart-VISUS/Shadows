@@ -36,11 +36,21 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	float4 v1_ls = mul(viewProj, v1_ws);
 	float4 v2_ls = mul(viewProj, v1_ws);
 
+	int v0_u = v0_ls.x * headSize.x;
+	int v0_v = v0_ls.y * headSize.y;
+
+	int v1_u = v1_ls.x * headSize.x;
+	int v1_v = v1_ls.y * headSize.y;
+
+	int v2_u = v2_ls.x * headSize.x;
+	int v2_v = v2_ls.y * headSize.y;
+
+
 	// CALCULATE BOUNDING BOX 
-	int minX = floor(min(v0_ls.x, min(v1_ls.x, v2_ls.x)));
-	int minY = floor(min(v0_ls.y, min(v1_ls.y, v2_ls.y)));
-	int maxX = ceil(max(v0_ls.x, max(v1_ls.x, v2_ls.x)));
-	int maxY = ceil(max(v0_ls.y, max(v1_ls.y, v2_ls.y)));
+	int minX = floor(min(v0_u, min(v1_u, v2_u)));
+	int minY = floor(min(v0_v, min(v1_v, v2_v)));
+	int maxX = ceil(max(v0_u, max(v1_u, v2_u)));
+	int maxY = ceil(max(v0_v, max(v1_v, v2_v)));
 
 	// BOUNDING BOX 
 	// (minX, minY)     (maxX, minY)
@@ -58,10 +68,10 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		{
 			bool inShadow = true;
 			// TEST ALL SAMPLES IF THEY ARE IN THE FRUSTUM OF THE TRIANGLE
+			// (ray intersection test (in WS): sample position + lightdirection)
 			if (inShadow)
 			{
 				// dunkel
-
 			}
 			else
 			{
