@@ -1857,9 +1857,8 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	SetCSInputs(context, scene.Indices.SRView, vertexBufferSRV);
 	ID3D11UnorderedAccessView* uavs2[2] = {headUAV, tailUAV };
 	context->CSSetUnorderedAccessViews(0, 2, uavs2, nullptr);
-	dispatchX = 300000 / 256 + 1; // TODO: DYNAMIC!!
-
-	
+	int size = scene.Indices.NumElements / 3;
+	dispatchX = size / 256 + 1; 
 
 	ProfileBlock block1(L"IZB Rendering");
 
