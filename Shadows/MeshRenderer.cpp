@@ -547,10 +547,10 @@ static void SetupMesh(ID3D11Device* device, ID3D11DeviceContext* context, Model*
 
 	D3D11_BUFFER_DESC vbDesc;
 	vbDesc.Usage = D3D11_USAGE_IMMUTABLE;
-	vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER | D3D11_BIND_SHADER_RESOURCE;
 	vbDesc.ByteWidth = uint32(positions.size() * sizeof(Float3));
 	vbDesc.CPUAccessFlags = 0;
-	vbDesc.MiscFlags = 0;
+	vbDesc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS;
 	vbDesc.StructureByteStride = 0;
 	D3D11_SUBRESOURCE_DATA vbInitData = { positions.data(), 0, 0 };
 	DXCall(device->CreateBuffer(&vbDesc, &vbInitData, &meshData.PositionsVB));
@@ -1790,21 +1790,15 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	//RENDER IZB SETUP
 	ID3D11BufferPtr vertexBufferPtr = scene.PositionsVB;
 
-	
-	//TODO: Create UAV for vertex and index buffer
-	//CREATE UAV
-	D3D11_UNORDERED_ACCESS_VIEW_DESC vertexBufferUAVDesc;
-	ZeroMemory(&vertexBufferUAVDesc, sizeof(vertexBufferUAVDesc));
-	vertexBufferUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
-	vertexBufferUAVDesc.Buffer.Flags = D3D11_BUFFER_UAV_FLAG_APPEND;
-	vertexBufferUAVDesc.Format = DXGI_FORMAT_UNKNOWN;
-	vertexBufferUAVDesc.Buffer.FirstElement = 0;
-	vertexBufferUAVDesc.Buffer.NumElements = 100;
-	//DXCall(device->CreateUnorderedAccessView(vertexBufferPtr, &vertexBufferUAVDesc, &vertexBufferUAV));
-
-	
-
-
+	// CREATE SRV FOR VERTEX BUFFER
+	CD3D11_SHADER_RESOURCE_VIEW_DESC vertexBufferSRVDesc;
+	ZeroMemory(&vertexBufferSRVDesc, sizeof(vertexBufferSRVDesc));
+	vertexBufferSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
+	vertexBufferSRVDesc.BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
+	vertexBufferSRVDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	vertexBufferSRVDesc.Buffer.FirstElement = 0;
+	vertexBufferSRVDesc.Buffer.NumElements = 100;
+	DXCall(device->CreateShaderResourceView(vertexBufferPtr, &vertexBufferSRVDesc, &vertexBufferSRV));
 }
 
 // NEW
@@ -1839,8 +1833,8 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	//Setup for dispatch
 	SetCSShader(context, computeshader);
 	SetCSInputs(context, depthBuffer.SRView);
-	ID3D11UnorderedAccessView* uavs[3] = { UAView, headUAV, tailUAV };
-	context->CSSetUnorderedAccessViews(0, 3, uavs, nullptr);
+	ID3D11UnorderedAccessView* uavs1[3] = { UAView, headUAV, tailUAV };
+	context->CSSetUnorderedAccessViews(0, 3, uavs1, nullptr);
 	uint32 dispatchX = depthBuffer.Width / 16;
 	uint32 dispatchY = depthBuffer.Height / 16;
 
@@ -1860,10 +1854,10 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 
 	//Setup for dispatch
 	SetCSShader(context, izbrendering);
-	//SetCSInputs(context, depthBuffer.SRView);
-	//ID3D11UnorderedAccessView* uavs[3] = { UAView, headUAV, tailUAV };
-	//context->CSSetUnorderedAccessViews(0, 3, uavs, nullptr);
-	 dispatchX = 300000 / 256 + 1;
+	SetCSInputs(context, scene.Indices.SRView, vertexBufferSRV);
+	ID3D11UnorderedAccessView* uavs2[2] = {headUAV, tailUAV };
+	context->CSSetUnorderedAccessViews(0, 2, uavs2, nullptr);
+	dispatchX = 300000 / 256 + 1; // TODO: DYNAMIC!!
 
 	
 
@@ -1873,6 +1867,10 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 
 	// wait for compute shader
 	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+
+	// Cleanup
+	ClearCSInputs(context);
+	ClearCSOutputs(context);
 
 
 
