@@ -15,16 +15,37 @@ cbuffer CSConstants : register(b1)
 	float4 texData;
 	uint4 texSize;
 	uint4 headSize;
+	uint4 vertexCount;
 };
 
 
 [numthreads(256, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
-	int3 triangleIndices = int3(Indices.Load(DTid.x) * 3, Indices.Load(DTid.x) * 3 + 1, Indices.Load(DTid.x) * 3 + 2);
+	if (DTid.x >= vertexCount.x) {
+		return;
+	}
+
+	int3 triangleIndices = int3(Indices.Load(DTid.x * 3 + 0), Indices.Load(DTid.x * 3 + 1), Indices.Load(DTid.x * 3 + 2));
+
 	float3 v0 = Vertices.Load(triangleIndices.x);
 	float3 v1 = Vertices.Load(triangleIndices.y);
 	float3 v2 = Vertices.Load(triangleIndices.z);
+	/*
+	
+	float3 v0;
+	v0.x = Vertices.Load(triangleIndices.x * 3 + 0);
+	v0.y = Vertices.Load(triangleIndices.x * 3 + 1);
+	v0.z = Vertices.Load(triangleIndices.x * 3 + 2);
+	float3 v1;
+	v1.x = Vertices.Load(triangleIndices.y * 3 + 0);
+	v1.y = Vertices.Load(triangleIndices.y * 3 + 1);
+	v1.z = Vertices.Load(triangleIndices.y * 3 + 2);
+	float3 v2;
+	v2.x = Vertices.Load(triangleIndices.z * 3 + 0);
+	v2.y = Vertices.Load(triangleIndices.z * 3 + 1);
+	v2.z = Vertices.Load(triangleIndices.z * 3 + 2);
+	*/
 
 	// Transformation to world space
 	float4 v0_ws = mul(float4(v0, 1.0f), meshWorld).xyzw;
@@ -71,6 +92,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 			// (ray intersection test (in WS): sample position + lightdirection)
 			if (inShadow)
 			{
+				HEAD[int2(i, j)] = 123;
 				// dunkel
 			}
 			else

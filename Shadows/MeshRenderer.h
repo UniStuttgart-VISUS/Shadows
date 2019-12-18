@@ -251,6 +251,7 @@ protected:
 		float4 texData;
 		uint4 texSize;
 		uint4 headSize;
+		uint4 vertexCount;
 	};
 
 	ConstantBuffer<DepthOnlyConstants> depthOnlyConstants;
@@ -278,6 +279,8 @@ protected:
 	ID3D11Texture2D* headTextureStaging;
 	ID3D11Texture2D* tailTexture;
 	ID3D11Texture2D* tailTextureStaging;
+
+	ID3D11Buffer* vertexBuffer;
 
 	ID3D11Query* queryObj;
 	D3D11_QUERY_DESC queryDesc;   	 

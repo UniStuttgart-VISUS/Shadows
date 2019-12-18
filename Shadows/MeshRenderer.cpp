@@ -1787,18 +1787,33 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	DXCall(device->CreateQuery(&this->queryDesc, &this->queryObj));
 	context->End(queryObj);
 
-	//RENDER IZB SETUP
-	ID3D11BufferPtr vertexBufferPtr = scene.PositionsVB;
+
+	D3D11_BUFFER_DESC desc;
+	scene.PositionsVB->GetDesc(&desc);
+	size_t vertexCnt = (static_cast<size_t>(desc.ByteWidth) / sizeof(Float3));
+	size_t byteWidth = static_cast<size_t>(desc.ByteWidth);
+
+	//Create Buffer to copy vertex buffer in
+	D3D11_BUFFER_DESC vbDesc;
+	vbDesc.Usage = D3D11_USAGE_DEFAULT;
+	vbDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	vbDesc.ByteWidth = byteWidth;
+	vbDesc.CPUAccessFlags = 0;
+	vbDesc.MiscFlags = 0;
+	vbDesc.StructureByteStride = 0;
+	DXCall(device->CreateBuffer(&vbDesc, nullptr, &vertexBuffer));
+
+	context->CopyResource(vertexBuffer, scene.PositionsVB);
+
 
 	// CREATE SRV FOR VERTEX BUFFER
 	CD3D11_SHADER_RESOURCE_VIEW_DESC vertexBufferSRVDesc;
 	ZeroMemory(&vertexBufferSRVDesc, sizeof(vertexBufferSRVDesc));
-	vertexBufferSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
-	vertexBufferSRVDesc.BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
-	vertexBufferSRVDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+	vertexBufferSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	vertexBufferSRVDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	vertexBufferSRVDesc.Buffer.FirstElement = 0;
-	vertexBufferSRVDesc.Buffer.NumElements = 100;
-	DXCall(device->CreateShaderResourceView(vertexBufferPtr, &vertexBufferSRVDesc, &vertexBufferSRV));
+	vertexBufferSRVDesc.Buffer.NumElements = vertexCnt;
+	DXCall(device->CreateShaderResourceView(vertexBuffer, &vertexBufferSRVDesc, &vertexBufferSRV));
 }
 
 // NEW
@@ -1823,6 +1838,11 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.Data.headSize.y = headTextureHeight;
 	computeShaderConstants.Data.headSize.z = 0;
 	computeShaderConstants.Data.headSize.w = 0;
+	computeShaderConstants.Data.vertexCount.x = scene.Indices.NumElements / 3;
+	computeShaderConstants.Data.vertexCount.y = 0;
+	computeShaderConstants.Data.vertexCount.z = 0;
+	computeShaderConstants.Data.vertexCount.w = 0;
+
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);
 

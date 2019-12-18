@@ -16,6 +16,8 @@ cbuffer CSConstants : register(b1)
     float4 texData;
     uint4 texSize;
     uint4 headSize;
+	uint4 vertexCount;
+
 };
 
 Texture2DMS<float4> Input : register(t0);
