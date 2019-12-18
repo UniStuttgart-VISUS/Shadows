@@ -5,6 +5,34 @@ Buffer<float3> Vertices : register(t1);
 RWTexture2D<int> HEAD : register(u0);
 RWTexture2D<int> TAIL : register(u1);
 
+
+// Hilfsfunktion Dreieckszahl
+uint f(uint w)
+{
+	return (w * (w + 1)) / 2;
+}
+
+// Hilfsfunktion untere Dreieckswurzel
+uint q(uint z)
+{
+	return floor((sqrt(8 * z + 1) - 1) / 2);
+}
+
+// returns a single, unique value given two integer values x and y
+int pairingFunction(int2 tuple)
+{
+	return tuple.y + 0.5 * (tuple.x + tuple.y) * (tuple.x + tuple.y + 1);
+}
+
+// calculates the inverse pairing function of an intger z to get x and y
+int2 inversePairingFunction(int z)
+{
+	int pi2 = z - f(q(z));
+	int pi1 = q(z) - pi2;
+	return int2(pi1, pi2);
+}
+
+
 cbuffer CSConstants : register(b1)
 {
 	float4x4 viewInv;
@@ -55,7 +83,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	// Transformation to Light Space via orthographic projection
 	float4 v0_ls = mul(viewProj, v0_ws);
 	float4 v1_ls = mul(viewProj, v1_ws);
-	float4 v2_ls = mul(viewProj, v1_ws);
+	float4 v2_ls = mul(viewProj, v2_ws);
 
 	int v0_u = v0_ls.x * headSize.x;
 	int v0_v = v0_ls.y * headSize.y;
@@ -87,18 +115,15 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	{
 		for (int j = minY; j <= maxY; ++j)
 		{
-			bool inShadow = true;
-			// TEST ALL SAMPLES IF THEY ARE IN THE FRUSTUM OF THE TRIANGLE
-			// (ray intersection test (in WS): sample position + lightdirection)
-			if (inShadow)
-			{
-				HEAD[int2(i, j)] = 123;
-				// dunkel
-			}
-			else
-			{
-				// hell
-			}
+			int value = HEAD[int2(i, j)];
+				while (value != -1) 
+				{
+					int2 samplePoint = inversePairingFunction(value);
+					//raytracing mit samplepoint
+					//setzen von Ergebnis in visibility mask
+					value = TAIL[samplePoint];
+
+				}
 		}
 
 	}
