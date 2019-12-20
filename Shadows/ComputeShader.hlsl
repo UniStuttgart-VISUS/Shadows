@@ -86,6 +86,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	// Transformation to world space
 	float4 worldSpacePosition = mul(viewInv, viewSpacePosition);
     
+    //save world coordinates for the sample point
     Output[DTid.xy] = float4(worldSpacePosition.xyz, 1.0f);
 
 	// Transformation to Light Space via orthographic projection

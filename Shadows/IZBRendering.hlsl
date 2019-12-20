@@ -9,6 +9,7 @@ RWTexture2D<int> TAIL : register(u2);
 RWTexture2D<int> VISMASK : register(u3);
 
 
+//ray-triangle based on the Möller–Trumbore  intersection algorithm
 bool RayIntersectsTriangle(float3 rayOrigin,
                            float3 rayVector,
                            float3 vertex0, float3 vertex1, float3 vertex2)
@@ -191,18 +192,23 @@ void main(uint3 DTid : SV_DispatchThreadID)
             
             int value = HEAD[int2(i, j)];
           
+            //iterate over all the sample points in the izb lists 
             while (value != -1)
             {
                 int2 samplePoint = inversePairingFunction(value);
                  
+                //load the world coordinates for the sample point
                 float3 samplePoint_ws = Output[samplePoint].xyz;
                 
+                //check if sample point intersects with the current triangle 
                 if (RayIntersectsTriangle(samplePoint_ws+1.0f*-lightDir, -lightDir, v0_ws.xyz, v1_ws.xyz, v2_ws.xyz ))
                 {
                     
+                    //save that the point is in the shadow
                     VISMASK[samplePoint] = 0;
                 }
 
+                //get next sample point from tail texture
                 value = TAIL[samplePoint];
             }
     

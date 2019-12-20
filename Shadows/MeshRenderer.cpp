@@ -1899,7 +1899,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	//reset textures to -1
 	context->CopyResource(headTexture, headTextureStaging);
 	context->CopyResource(tailTexture, tailTextureStaging);
-	context->CopyResource(visMap, visMapStaging);
+	//context->CopyResource(visMap, visMapStaging);
 	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
 
 	//Setup for dispatch
@@ -1930,7 +1930,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.SetCS(context, 1);
 
 	SetCSInputs(context, scene.Indices.SRView, vertexBufferSRV);
-	ID3D11UnorderedAccessView* uavs2[4] = {UAView,headUAV, tailUAV, visMapUAV};
+	ID3D11UnorderedAccessView* uavs2[4] = {UAView, headUAV, tailUAV, visMapUAV};
 	context->CSSetUnorderedAccessViews(0, 4, uavs2, nullptr);
 	int size = scene.Indices.NumElements / 3;
 	dispatchX = size / 256 + 1; 
