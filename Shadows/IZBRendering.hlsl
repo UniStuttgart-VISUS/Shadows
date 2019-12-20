@@ -183,10 +183,10 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	//       |/______\|
 	// (minX, maxY)     (maxX, maxY)
 
-    [unroll(10)]
+   [unroll(10)]
     for (int i = minX; i <= maxY; ++i)
 	{
-        [unroll(10)]
+       [unroll(10)]
         for (int j = minY; j <= maxY; ++j)
         {
             
@@ -200,8 +200,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 //load the world coordinates for the sample point
                 float3 samplePoint_ws = Output[samplePoint].xyz;
                 
+                //adjust samplepoint to avoid self intersection
+                float3 adjustedSamplePoint_ws = samplePoint_ws + 0.1f * lightDir;
+                
                 //check if sample point intersects with the current triangle 
-                if (RayIntersectsTriangle(samplePoint_ws, lightDir, v0_ws.xyz, v1_ws.xyz, v2_ws.xyz ))
+                if (RayIntersectsTriangle(adjustedSamplePoint_ws, lightDir, v0_ws.xyz, v1_ws.xyz, v2_ws.xyz ))
                 {
                     
                     //save that the point is in the shadow
