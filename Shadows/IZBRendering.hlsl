@@ -201,7 +201,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 float3 samplePoint_ws = Output[samplePoint].xyz;
                 
                 //check if sample point intersects with the current triangle 
-                if (RayIntersectsTriangle(samplePoint_ws+1.0f*-lightDir, -lightDir, v0_ws.xyz, v1_ws.xyz, v2_ws.xyz ))
+                if (RayIntersectsTriangle(samplePoint_ws, lightDir, v0_ws.xyz, v1_ws.xyz, v2_ws.xyz ))
                 {
                     
                     //save that the point is in the shadow

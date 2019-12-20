@@ -60,7 +60,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	{
 		return;
 	}
-    //Reset Output
+    //Reset Output Texture
     Output[int2(DTid.xy)] = float4(0.0f, 0.0f, 0.0f,1.0f);
 
 	// Depth Transformation
