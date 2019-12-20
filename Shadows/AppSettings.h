@@ -134,6 +134,7 @@ enum class DebugMode {
 	ComputeShader = 4,
 	Head = 5,
 	Tail = 6,
+	VisibilityMask = 7,
 
 	NumValues
 };

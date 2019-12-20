@@ -252,6 +252,7 @@ protected:
 		uint4 texSize;
 		uint4 headSize;
 		uint4 vertexCount;
+		float3 lightDir;
 	};
 
 	ConstantBuffer<DepthOnlyConstants> depthOnlyConstants;
@@ -271,6 +272,7 @@ protected:
 	ID3D11UnorderedAccessView* headUAV;
 	ID3D11UnorderedAccessView* tailUAV;
 	ID3D11UnorderedAccessView* verticesUAV;
+	ID3D11UnorderedAccessView* visMapUAV;
 
 	ID3D11ShaderResourceView* vertexBufferSRV;
 
@@ -279,6 +281,9 @@ protected:
 	ID3D11Texture2D* headTextureStaging;
 	ID3D11Texture2D* tailTexture;
 	ID3D11Texture2D* tailTextureStaging;
+	ID3D11Texture2D* visMap;
+	ID3D11Texture2D* visMapStaging;
+
 
 	ID3D11Buffer* vertexBuffer;
 

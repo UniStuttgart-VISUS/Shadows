@@ -17,6 +17,7 @@ cbuffer CSConstants : register(b1)
     uint4 texSize;
     uint4 headSize;
 	uint4 vertexCount;
+    float3 lightDir;
 
 };
 
@@ -59,6 +60,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	{
 		return;
 	}
+    //Reset Output
+    Output[int2(DTid.xy)] = float4(0.0f, 0.0f, 0.0f,1.0f);
 
 	// Depth Transformation
 	float depth = Input.Load(int2(DTid.xy), 0).x;
@@ -82,17 +85,20 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
 	// Transformation to world space
 	float4 worldSpacePosition = mul(viewInv, viewSpacePosition);
+    
+    Output[DTid.xy] = float4(worldSpacePosition.xyz, 1.0f);
 
 	// Transformation to Light Space via orthographic projection
 	float4 lightSpacePosition = mul(viewProj, worldSpacePosition);
 
-    Output[int2(DTid.xy)] = float4(lightSpacePosition.xyz, 1.0f);
-
     ////////////////////////////////////////////////////////////////////////////////////////////////
     // IZB
-
-	int u = lightSpacePosition.x * headSize.x;
-	int v = lightSpacePosition.y * headSize.y;
+    float u_f = lightSpacePosition.x * headSize.x;
+    float v_f = lightSpacePosition.y * headSize.y;
+    
+    
+    int u = floor(u_f);
+    int v = floor(v_f);
     
 	// map x and y to a single, unique integer z
     int z = pairingFunction(DTid.xy);

@@ -1,9 +1,76 @@
 #include "Header.hlsli"
 #include "SharedConstants.h"
+
 StructuredBuffer<uint> Indices : register(t0);
 Buffer<float3> Vertices : register(t1);
-RWTexture2D<int> HEAD : register(u0);
-RWTexture2D<int> TAIL : register(u1);
+RWTexture2D<float4> Output : register(u0);
+RWTexture2D<int> HEAD : register(u1);
+RWTexture2D<int> TAIL : register(u2);
+RWTexture2D<int> VISMASK : register(u3);
+
+
+bool RayIntersectsTriangle(float3 rayOrigin,
+                           float3 rayVector,
+                           float3 vertex0, float3 vertex1, float3 vertex2)
+{
+    const float EPSILON = 0.0000001f;
+
+    bool result = false;
+    
+    float3 edge1 = vertex1 - vertex0;
+    float3 edge2 = vertex2 - vertex0;
+    
+    float3 h = cross(rayVector, edge2);
+    
+    float a = dot(edge1, h); 
+   
+    if (a > -EPSILON && a < EPSILON)
+    {
+        result = false; // This ray is parallel to this triangle.
+    }
+    else
+    {
+        
+        float f = 1.0 / a;
+        float3 s = rayOrigin - vertex0;
+        float u = f * dot(s, h);
+        if (u < 0.0 || u > 1.0)
+        {
+            result = false;
+        }
+        else
+        {
+            float3 q = cross(s, edge1);
+            float v = f * dot(rayVector, q);
+            if (v < 0.0 || u + v > 1.0)
+            {
+                result = false;
+            }
+            else
+            {
+                
+                // At this stage we can compute t to find out where the intersection point is on the line.
+                float t = f * dot(edge2, q);
+                if (t > EPSILON && t < 1 / EPSILON) // ray intersection
+                {
+                //intersectionPoint = rayOrigin + rayVector * t;
+                    result = true;
+                }
+                else
+                {
+                    // This means that there is a line intersection but not a ray intersection.
+                    result = false;
+        
+                }
+                
+            }
+            
+            
+        }
+    }
+
+    return result;
+}
 
 
 // Hilfsfunktion Dreieckszahl
@@ -44,6 +111,7 @@ cbuffer CSConstants : register(b1)
 	uint4 texSize;
 	uint4 headSize;
 	uint4 vertexCount;
+    float3 lightDir;
 };
 
 
@@ -53,6 +121,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	if (DTid.x >= vertexCount.x) {
 		return;
 	}
+    
 
 	int3 triangleIndices = int3(Indices.Load(DTid.x * 3 + 0), Indices.Load(DTid.x * 3 + 1), Indices.Load(DTid.x * 3 + 2));
 
@@ -94,14 +163,17 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	int v2_u = v2_ls.x * headSize.x;
 	int v2_v = v2_ls.y * headSize.y;
 
-
+    
 	// CALCULATE BOUNDING BOX 
 	int minX = floor(min(v0_u, min(v1_u, v2_u)));
 	int minY = floor(min(v0_v, min(v1_v, v2_v)));
 	int maxX = ceil(max(v0_u, max(v1_u, v2_u)));
 	int maxY = ceil(max(v0_v, max(v1_v, v2_v)));
 
-	// BOUNDING BOX 
+    
+	
+    
+    // BOUNDING BOX 
 	// (minX, minY)     (maxX, minY)
 	//        _________
 	//       |   /\   |
@@ -110,22 +182,34 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	//       |/______\|
 	// (minX, maxY)     (maxX, maxY)
 
-
-	for (int i = minX; i <= maxX; ++i)
+    [unroll(10)]
+    for (int i = minX; i <= maxY; ++i)
 	{
-		for (int j = minY; j <= maxY; ++j)
-		{
-			int value = HEAD[int2(i, j)];
-				while (value != -1) 
-				{
-					int2 samplePoint = inversePairingFunction(value);
-					//raytracing mit samplepoint
-					//setzen von Ergebnis in visibility mask
-					value = TAIL[samplePoint];
+        [unroll(10)]
+        for (int j = minY; j <= maxY; ++j)
+        {
+            
+            int value = HEAD[int2(i, j)];
+          
+            while (value != -1)
+            {
+                int2 samplePoint = inversePairingFunction(value);
+                 
+                float3 samplePoint_ws = Output[samplePoint].xyz;
+                
+                if (RayIntersectsTriangle(samplePoint_ws+1.0f*-lightDir, -lightDir, v0_ws.xyz, v1_ws.xyz, v2_ws.xyz ))
+                {
+                    
+                    VISMASK[samplePoint] = 0;
+                }
 
-				}
-		}
+                value = TAIL[samplePoint];
+            }
+    
+        }
 
 	}
-
+    
 }
+
+

@@ -256,7 +256,7 @@ void ShadowsApp::Render(const Timer& timer)
 	if (AppSettings::DebugMode == DebugMode::Position) {
 		postProcessor.VisualizePosition(depthBuffer, deviceManager.BackBuffer());
 	}
-	if (AppSettings::DebugMode == DebugMode::Head || AppSettings::DebugMode == DebugMode::Tail || AppSettings::DebugMode == DebugMode::ComputeShader
+	if (AppSettings::DebugMode == DebugMode::Head || AppSettings::DebugMode == DebugMode::Tail || AppSettings::DebugMode == DebugMode::ComputeShader || AppSettings::DebugMode == DebugMode::VisibilityMask
 		) {
 		Float4x4 meshWorld = Float4x4::ScaleMatrix(MeshScales[AppSettings::CurrentScene]);
 		Float4x4 characterWorld = Float4x4::ScaleMatrix(CharacterScale);

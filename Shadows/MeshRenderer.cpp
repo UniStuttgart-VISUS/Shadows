@@ -1669,7 +1669,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	D3D11_TEXTURE2D_DESC renderTargetDesc;
 	ZeroMemory(&renderTargetDesc, sizeof(renderTargetDesc));
 	renderTargetDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	renderTargetDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	renderTargetDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	renderTargetDesc.Height = 720;
 	renderTargetDesc.Width = 1280;	
 	renderTargetDesc.ArraySize = 1;
@@ -1682,7 +1682,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	//Create UAV for Compute shader
 	D3D11_UNORDERED_ACCESS_VIEW_DESC uavCS;
 	ZeroMemory(&uavCS, sizeof(uavCS));
-	uavCS.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	uavCS.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	uavCS.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
 	uavCS.Texture2D.MipSlice = 0;
 	DXCall(device->CreateUnorderedAccessView(renderTarget, &uavCS, &UAView));
@@ -1814,6 +1814,52 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	vertexBufferSRVDesc.Buffer.FirstElement = 0;
 	vertexBufferSRVDesc.Buffer.NumElements = vertexCnt;
 	DXCall(device->CreateShaderResourceView(vertexBuffer, &vertexBufferSRVDesc, &vertexBufferSRV));
+
+	//create Visibility mask texture and uav
+
+
+	D3D11_TEXTURE2D_DESC visMapDesc;
+	ZeroMemory(&visMapDesc, sizeof(visMapDesc));
+	visMapDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	visMapDesc.Format = DXGI_FORMAT_R32_SINT;
+	visMapDesc.Height = 720;	//TODO: should be context.height !!!
+	visMapDesc.Width = 1280;	//TODO: should be context.width !!!
+	visMapDesc.ArraySize = 1;
+	visMapDesc.MipLevels = 1;
+	visMapDesc.SampleDesc.Count = 1;
+	visMapDesc.SampleDesc.Quality = 0;
+	visMapDesc.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&visMapDesc, nullptr, &visMap));
+
+	D3D11_UNORDERED_ACCESS_VIEW_DESC visMapUAVDesc;
+	ZeroMemory(&visMapUAVDesc, sizeof(visMapUAVDesc));
+	visMapUAVDesc.Format = DXGI_FORMAT_R32_SINT;
+	visMapUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	DXCall(device->CreateUnorderedAccessView(visMap, &visMapUAVDesc, &visMapUAV));
+
+	//COPY Vis Map
+
+	D3D11_TEXTURE2D_DESC visMapStagingDesc;
+	ZeroMemory(&visMapStagingDesc, sizeof(visMapStagingDesc));
+	visMapStagingDesc.Format = DXGI_FORMAT_R32_SINT;
+	visMapStagingDesc.Height = 720;	//TODO: should be context.height !!!
+	visMapStagingDesc.Width = 1280;	//TODO: should be context.width !!!
+	visMapStagingDesc.ArraySize = 1;
+	visMapStagingDesc.MipLevels = 1;
+	visMapStagingDesc.SampleDesc.Count = 1;
+	visMapStagingDesc.SampleDesc.Quality = 0;
+	visMapStagingDesc.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&visMapStagingDesc, nullptr, &visMapStaging));
+
+	//Update Vis map texture
+	int sizeVisMap = visMapStagingDesc.Width * visMapStagingDesc.Height;
+	std::vector<int> initVisMap(sizeVisMap, 1);
+	UINT SrcRowPitchVisMap = visMapStagingDesc.Width * sizeof(DXGI_FORMAT_R32_SINT); //
+	UINT SrcDepthPitchVisMap = SrcRowPitchVisMap * visMapStagingDesc.Height;
+	context->UpdateSubresource(visMapStaging, 0, NULL, initVisMap.data(), SrcRowPitchVisMap, SrcDepthPitchVisMap);
+	context->CopyResource(visMap, visMapStaging);
+
+
 }
 
 // NEW
@@ -1842,6 +1888,9 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.Data.vertexCount.y = 0;
 	computeShaderConstants.Data.vertexCount.z = 0;
 	computeShaderConstants.Data.vertexCount.w = 0;
+	computeShaderConstants.Data.lightDir = AppSettings::LightDirection;
+
+	
 
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);
@@ -1850,6 +1899,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	//reset textures to -1
 	context->CopyResource(headTexture, headTextureStaging);
 	context->CopyResource(tailTexture, tailTextureStaging);
+	context->CopyResource(visMap, visMapStaging);
 	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
 
 	//Setup for dispatch
@@ -1880,8 +1930,8 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.SetCS(context, 1);
 
 	SetCSInputs(context, scene.Indices.SRView, vertexBufferSRV);
-	ID3D11UnorderedAccessView* uavs2[2] = {headUAV, tailUAV };
-	context->CSSetUnorderedAccessViews(0, 2, uavs2, nullptr);
+	ID3D11UnorderedAccessView* uavs2[4] = {UAView,headUAV, tailUAV, visMapUAV};
+	context->CSSetUnorderedAccessViews(0, 4, uavs2, nullptr);
 	int size = scene.Indices.NumElements / 3;
 	dispatchX = size / 256 + 1; 
 
@@ -1906,6 +1956,9 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	}
 	if (AppSettings::DebugMode == DebugMode::ComputeShader) {
 		return renderTarget;
+	}
+	if (AppSettings::DebugMode == DebugMode::VisibilityMask) {
+		return visMap;
 	}
 }
 
