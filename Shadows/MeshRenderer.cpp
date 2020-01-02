@@ -296,7 +296,7 @@ static Float4x4 MakeGlobalShadowMatrix(const Camera& camera)
 		0.5f, 0.0f, 1.0f);
 
 	// TODO: new orthographic camera with dynamic values
-	if (AppSettings::DebugMode == DebugMode::ComputeShader || AppSettings::DebugMode == DebugMode::Head || AppSettings::DebugMode == DebugMode::Tail) {
+	if (AppSettings::DebugMode == DebugMode::ComputeShader || AppSettings::DebugMode == DebugMode::Head || AppSettings::DebugMode == DebugMode::Tail|| AppSettings::DebugMode == DebugMode::VisibilityMask) {
 
 
 		// Calculate the radius of a bounding sphere surrounding the frustum corners
@@ -1896,10 +1896,10 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.SetCS(context, 1);
 
 
-	//reset textures to -1
+	//reset textures to -1 / 1
 	context->CopyResource(headTexture, headTextureStaging);
 	context->CopyResource(tailTexture, tailTextureStaging);
-	//context->CopyResource(visMap, visMapStaging);
+	context->CopyResource(visMap, visMapStaging);
 	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
 
 	//Setup for dispatch

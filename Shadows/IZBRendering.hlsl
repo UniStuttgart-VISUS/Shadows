@@ -182,11 +182,10 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	//       | /    \ |
 	//       |/______\|
 	// (minX, maxY)     (maxX, maxY)
-
-   [unroll(10)]
-    for (int i = minX; i <= maxY; ++i)
+    [unroll(2)]
+    for (int i = minX; i <= maxX; ++i)
 	{
-       [unroll(10)]
+        [unroll(2)]
         for (int j = minY; j <= maxY; ++j)
         {
             
