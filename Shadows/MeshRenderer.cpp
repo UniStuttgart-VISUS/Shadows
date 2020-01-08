@@ -1665,30 +1665,42 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	ID3D11ComputeShader* izbrendering = nullptr;
 	DXCall(device->CreateComputeShader(::IZBRenderingByteCode, sizeof(::IZBRenderingByteCode), nullptr, &izbrendering));
 
-	// Compute Shader Input/Output
-	D3D11_TEXTURE2D_DESC renderTargetDesc;
-	ZeroMemory(&renderTargetDesc, sizeof(renderTargetDesc));
-	renderTargetDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	renderTargetDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	renderTargetDesc.Height = 720;
-	renderTargetDesc.Width = 1280;	
-	renderTargetDesc.ArraySize = 1;
-	renderTargetDesc.MipLevels = 1;
-	renderTargetDesc.SampleDesc.Count = 1;
-	renderTargetDesc.SampleDesc.Quality = 0;
-	renderTargetDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&renderTargetDesc, nullptr, &renderTarget));
-
-	//Create UAV for Compute shader
-	D3D11_UNORDERED_ACCESS_VIEW_DESC uavCS;
-	ZeroMemory(&uavCS, sizeof(uavCS));
-	uavCS.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	uavCS.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	uavCS.Texture2D.MipSlice = 0;
-	DXCall(device->CreateUnorderedAccessView(renderTarget, &uavCS, &UAView));
 
 	///////////////////////////////////////////////////////////////////////////////////////////
 	// IZB TEXTURES
+
+	// Create world space texture desc
+	D3D11_TEXTURE2D_DESC worldPosDesc;
+	ZeroMemory(&worldPosDesc, sizeof(worldPosDesc));
+	worldPosDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	worldPosDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	worldPosDesc.Height = 720;
+	worldPosDesc.Width = 1280;	
+	worldPosDesc.ArraySize = 1;
+	worldPosDesc.MipLevels = 1;
+	worldPosDesc.SampleDesc.Count = 1;
+	worldPosDesc.SampleDesc.Quality = 0;
+	worldPosDesc.Usage = D3D11_USAGE_DEFAULT;
+	DXCall(device->CreateTexture2D(&worldPosDesc, nullptr, &worldPosTexture));
+
+	//Create UAV for world pos texture
+	D3D11_UNORDERED_ACCESS_VIEW_DESC worldPosUAVDesc;
+	ZeroMemory(&worldPosUAVDesc, sizeof(worldPosUAVDesc));
+	worldPosUAVDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	worldPosUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+	worldPosUAVDesc.Texture2D.MipSlice = 0;
+	DXCall(device->CreateUnorderedAccessView(worldPosTexture, &worldPosUAVDesc, &worldPosUAV));
+
+	// create SRV for world space texture
+	CD3D11_SHADER_RESOURCE_VIEW_DESC worldPosSRVDesc;
+	ZeroMemory(&worldPosSRVDesc, sizeof(worldPosSRVDesc));
+	worldPosSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	worldPosSRVDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	worldPosSRVDesc.Texture2D.MipLevels = 1;
+	worldPosSRVDesc.Texture2D.MostDetailedMip = 0;
+	DXCall(device->CreateShaderResourceView(worldPosTexture, &worldPosSRVDesc, &worldPosSRV));
+
+
 
 	// HEAD
 	D3D11_TEXTURE2D_DESC headTextureDesc;
@@ -1773,12 +1785,30 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	headUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
 	DXCall(device->CreateUnorderedAccessView(headTexture, &headUAVDesc, &headUAV));
 
+	// create SRV for head
+	CD3D11_SHADER_RESOURCE_VIEW_DESC headSRVDesc;
+	ZeroMemory(&headSRVDesc, sizeof(headSRVDesc));
+	headSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	headSRVDesc.Format = DXGI_FORMAT_R32_SINT;
+	headSRVDesc.Texture2D.MipLevels = 1;
+	headSRVDesc.Texture2D.MostDetailedMip = 0;
+	DXCall(device->CreateShaderResourceView(headTexture, &headSRVDesc, &headSRV));
+
 	// create UAV for tail
 	D3D11_UNORDERED_ACCESS_VIEW_DESC tailUAVDesc;
 	ZeroMemory(&tailUAVDesc, sizeof(tailUAVDesc));
 	tailUAVDesc.Format = DXGI_FORMAT_R32_SINT;
 	tailUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
 	DXCall(device->CreateUnorderedAccessView(tailTexture, &tailUAVDesc, &tailUAV));
+
+	// create SRV for tail
+	CD3D11_SHADER_RESOURCE_VIEW_DESC tailSRVDesc;
+	ZeroMemory(&tailSRVDesc, sizeof(tailSRVDesc));
+	tailSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	tailSRVDesc.Format = DXGI_FORMAT_R32_SINT;
+	tailSRVDesc.Texture2D.MipLevels = 1;
+	tailSRVDesc.Texture2D.MostDetailedMip = 0;
+	DXCall(device->CreateShaderResourceView(tailTexture, &tailSRVDesc, &tailSRV));
 
 	///////////////////////////////////////////////////////////////////////////////////////////
 	// QUERY
@@ -1905,7 +1935,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	//Setup for dispatch
 	SetCSShader(context, computeshader);
 	SetCSInputs(context, depthBuffer.SRView);
-	ID3D11UnorderedAccessView* uavs1[3] = { UAView, headUAV, tailUAV };
+	ID3D11UnorderedAccessView* uavs1[3] = { worldPosUAV, headUAV, tailUAV };
 	context->CSSetUnorderedAccessViews(0, 3, uavs1, nullptr);
 	uint32 dispatchX = depthBuffer.Width / 16;
 	uint32 dispatchY = depthBuffer.Height / 16;
@@ -1921,6 +1951,12 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	ClearCSInputs(context);
 	ClearCSOutputs(context);
 
+	ID3D11ShaderResourceView* srvs[5] = {nullptr, nullptr, nullptr, nullptr,nullptr};
+	context->CSSetShaderResources(0, 5, srvs);
+
+	ID3D11UnorderedAccessView* uavs[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
+	context->CSSetUnorderedAccessViews(0, 6, uavs, nullptr);
+
 	//////////////////////////////////////////////////////////////////////////
 	// Start IZBRendering Compute Shader
 
@@ -1929,9 +1965,13 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	computeShaderConstants.ApplyChanges(context);
 	computeShaderConstants.SetCS(context, 1);
 
-	SetCSInputs(context, scene.Indices.SRView, vertexBufferSRV);
-	ID3D11UnorderedAccessView* uavs2[4] = {UAView, headUAV, tailUAV, visMapUAV};
-	context->CSSetUnorderedAccessViews(0, 4, uavs2, nullptr);
+	
+	ID3D11ShaderResourceView* srv[5] = { scene.Indices.SRView, vertexBufferSRV, worldPosSRV, headSRV, tailSRV };
+	context->CSSetShaderResources(0 ,5 ,srv);
+	
+	ID3D11UnorderedAccessView* uavs2[1] = {visMapUAV};
+	context->CSSetUnorderedAccessViews(0, 1, uavs2, nullptr);
+	
 	int size = scene.Indices.NumElements / 3;
 	dispatchX = size / 256 + 1; 
 
@@ -1947,6 +1987,11 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 	ClearCSOutputs(context);
 
 
+	context->CSSetShaderResources(0, 5, srvs);
+
+	context->CSSetUnorderedAccessViews(0, 6, uavs, nullptr);
+
+
 
 	if (AppSettings::DebugMode == DebugMode::Head) {
 		return headTexture;
@@ -1955,7 +2000,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 		return tailTexture;
 	}
 	if (AppSettings::DebugMode == DebugMode::ComputeShader) {
-		return renderTarget;
+		return worldPosTexture;
 	}
 	if (AppSettings::DebugMode == DebugMode::VisibilityMask) {
 		return visMap;

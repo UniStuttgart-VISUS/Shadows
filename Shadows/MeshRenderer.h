@@ -268,15 +268,19 @@ protected:
 
 	ConstantBuffer<ComputeShaderConstants> computeShaderConstants;
 
-	ID3D11UnorderedAccessView* UAView;
+	ID3D11UnorderedAccessView* worldPosUAV;
 	ID3D11UnorderedAccessView* headUAV;
 	ID3D11UnorderedAccessView* tailUAV;
 	ID3D11UnorderedAccessView* verticesUAV;
 	ID3D11UnorderedAccessView* visMapUAV;
 
 	ID3D11ShaderResourceView* vertexBufferSRV;
+	ID3D11ShaderResourceView* worldPosSRV;
+	ID3D11ShaderResourceView* headSRV;
+	ID3D11ShaderResourceView* tailSRV;
 
-	ID3D11Texture2D* renderTarget;
+
+	ID3D11Texture2D* worldPosTexture;
 	ID3D11Texture2D* headTexture;
 	ID3D11Texture2D* headTextureStaging;
 	ID3D11Texture2D* tailTexture;

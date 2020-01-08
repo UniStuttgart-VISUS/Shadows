@@ -213,6 +213,7 @@ void ShadowsApp::Update(const Timer& timer)
 		float scale = MeshScales[AppSettings::CurrentScene];
 		meshRenderer.SetSceneMesh(deviceManager.ImmediateContext(), &models[AppSettings::CurrentScene],
 			XMMatrixScaling(scale, scale, scale));
+		meshRenderer.InitializeIZB(deviceManager.Device(), deviceManager.ImmediateContext(), depthBuffer);
 	}
 
 	AppSettings::Update();

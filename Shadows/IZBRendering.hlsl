@@ -3,10 +3,10 @@
 
 StructuredBuffer<uint> Indices : register(t0);
 Buffer<float3> Vertices : register(t1);
-RWTexture2D<float4> Output : register(u0);
-RWTexture2D<int> HEAD : register(u1);
-RWTexture2D<int> TAIL : register(u2);
-RWTexture2D<int> VISMASK : register(u3);
+Texture2D<float4> WORLDPOS : register(t2);
+Texture2D<int> HEAD : register(t3);
+Texture2D<int> TAIL : register(t4);
+RWTexture2D<int> VISMASK : register(u0);
 
 
 //ray-triangle based on the Möller–Trumbore  intersection algorithm
@@ -182,10 +182,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	//       | /    \ |
 	//       |/______\|
 	// (minX, maxY)     (maxX, maxY)
-    [unroll(2)]
+    
     for (int i = minX; i <= maxX; ++i)
 	{
-        [unroll(2)]
         for (int j = minY; j <= maxY; ++j)
         {
             
@@ -197,7 +196,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
                 int2 samplePoint = inversePairingFunction(value);
                  
                 //load the world coordinates for the sample point
-                float3 samplePoint_ws = Output[samplePoint].xyz;
+                float3 samplePoint_ws = WORLDPOS[samplePoint].xyz;
                 
                 //adjust samplepoint to avoid self intersection
                 float3 adjustedSamplePoint_ws = samplePoint_ws + 0.1f * lightDir;
