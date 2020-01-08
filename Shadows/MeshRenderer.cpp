@@ -1927,69 +1927,77 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context, DepthSten
 
 
 	//reset textures to -1 / 1
-	context->CopyResource(headTexture, headTextureStaging);
-	context->CopyResource(tailTexture, tailTextureStaging);
-	context->CopyResource(visMap, visMapStaging);
-	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+	{
+		ProfileBlock block(L"Reset Textures");
+		context->CopyResource(headTexture, headTextureStaging);
+		context->CopyResource(tailTexture, tailTextureStaging);
+		context->CopyResource(visMap, visMapStaging);
+		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+	}
 
-	//Setup for dispatch
-	SetCSShader(context, computeshader);
-	SetCSInputs(context, depthBuffer.SRView);
-	ID3D11UnorderedAccessView* uavs1[3] = { worldPosUAV, headUAV, tailUAV };
-	context->CSSetUnorderedAccessViews(0, 3, uavs1, nullptr);
-	uint32 dispatchX = depthBuffer.Width / 16;
-	uint32 dispatchY = depthBuffer.Height / 16;
 
-	ProfileBlock block(L"IZB Creation");
+	{
+		ProfileBlock block(L"IZB Creation");
 
-	context->Dispatch(dispatchX, dispatchY, 1);
+		//Setup for dispatch
+		SetCSShader(context, computeshader);
+		SetCSInputs(context, depthBuffer.SRView);
+		ID3D11UnorderedAccessView* uavs1[3] = { worldPosUAV, headUAV, tailUAV };
+		context->CSSetUnorderedAccessViews(0, 3, uavs1, nullptr);
+		uint32 dispatchX = depthBuffer.Width / 16;
+		uint32 dispatchY = depthBuffer.Height / 16;
 
-	// wait for compute shader
-	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+		context->Dispatch(dispatchX, dispatchY, 1);
 
-	// Cleanup
-	ClearCSInputs(context);
-	ClearCSOutputs(context);
+		// wait for compute shader
+		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
 
-	ID3D11ShaderResourceView* srvs[5] = {nullptr, nullptr, nullptr, nullptr,nullptr};
-	context->CSSetShaderResources(0, 5, srvs);
+		// Cleanup
+		ClearCSInputs(context);
+		ClearCSOutputs(context);
 
-	ID3D11UnorderedAccessView* uavs[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr};
-	context->CSSetUnorderedAccessViews(0, 6, uavs, nullptr);
+		ID3D11UnorderedAccessView* uavs[3] = { nullptr, nullptr, nullptr };
+		context->CSSetUnorderedAccessViews(0, 3, uavs, nullptr);
+	}
 
 	//////////////////////////////////////////////////////////////////////////
 	// Start IZBRendering Compute Shader
 
-	//Setup for dispatch
-	SetCSShader(context, izbrendering);
-	computeShaderConstants.ApplyChanges(context);
-	computeShaderConstants.SetCS(context, 1);
+	{
+		ProfileBlock block1(L"IZB Rendering");
 
-	
-	ID3D11ShaderResourceView* srv[5] = { scene.Indices.SRView, vertexBufferSRV, worldPosSRV, headSRV, tailSRV };
-	context->CSSetShaderResources(0 ,5 ,srv);
-	
-	ID3D11UnorderedAccessView* uavs2[1] = {visMapUAV};
-	context->CSSetUnorderedAccessViews(0, 1, uavs2, nullptr);
-	
-	int size = scene.Indices.NumElements / 3;
-	dispatchX = size / 256 + 1; 
+		//Setup for dispatch
+		SetCSShader(context, izbrendering);
+		computeShaderConstants.ApplyChanges(context);
+		computeShaderConstants.SetCS(context, 1);
 
-	ProfileBlock block1(L"IZB Rendering");
+		{
+			ID3D11ShaderResourceView* srvs[5] = { scene.Indices.SRView, vertexBufferSRV, worldPosSRV, headSRV, tailSRV };
+			context->CSSetShaderResources(0, 5, srvs);
 
-	context->Dispatch(dispatchX, 1, 1);
+			ID3D11UnorderedAccessView* uavs[1] = { visMapUAV };
+			context->CSSetUnorderedAccessViews(0, 1, uavs, nullptr);
+		}
+		
+		int size = scene.Indices.NumElements / 3;
+		uint32 dispatchX = size / 128 + 1;
 
-	// wait for compute shader
-	while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+		context->Dispatch(dispatchX, 1, 1);
 
-	// Cleanup
-	ClearCSInputs(context);
-	ClearCSOutputs(context);
+		// wait for compute shader
+		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
 
+		// Cleanup
+		ClearCSInputs(context);
+		ClearCSOutputs(context);
 
-	context->CSSetShaderResources(0, 5, srvs);
-
-	context->CSSetUnorderedAccessViews(0, 6, uavs, nullptr);
+		{
+			ID3D11ShaderResourceView* srvs[5] = { nullptr, nullptr, nullptr, nullptr, nullptr };
+			context->CSSetShaderResources(0, 5, srvs);
+			ID3D11UnorderedAccessView* uavs[1] = { nullptr };
+			context->CSSetUnorderedAccessViews(0, 1, uavs, nullptr);
+		}
+	}
 
 
 

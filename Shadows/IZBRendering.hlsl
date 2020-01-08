@@ -116,7 +116,7 @@ cbuffer CSConstants : register(b1)
 };
 
 
-[numthreads(256, 1, 1)]
+[numthreads(128, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
 {
 	if (DTid.x >= vertexCount.x) {
@@ -191,7 +191,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
             int value = HEAD[int2(i, j)];
           
             //iterate over all the sample points in the izb lists 
-            while (value != -1)
+			int iter = 0;
+            while (value != -1 && iter < 8)
             {
                 int2 samplePoint = inversePairingFunction(value);
                  
@@ -211,6 +212,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
                 //get next sample point from tail texture
                 value = TAIL[samplePoint];
+
+				iter++;
             }
     
         }
