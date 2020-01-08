@@ -164,5 +164,7 @@ ShaderCache/
 
 # Sublime
 *.sublime-workspace
-/.vs
+*/.vs
 /Shadows/.vs/Shadows_2015/v16
+/Shadows/.vs/Shadows_2015/v15
+
