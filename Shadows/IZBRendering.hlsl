@@ -192,7 +192,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
           
             //iterate over all the sample points in the izb lists 
 			int iter = 0;
-            while (value != -1 && iter < 8)
+            while (value != -1 && iter < 1)
             {
                 int2 samplePoint = inversePairingFunction(value);
                  

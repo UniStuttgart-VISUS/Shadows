@@ -292,5 +292,10 @@ protected:
 	ID3D11Buffer* vertexBuffer;
 
 	ID3D11Query* queryObj;
-	D3D11_QUERY_DESC queryDesc;   	 
+	D3D11_QUERY_DESC queryDesc;
+	std::vector<ID3D11ShaderResourceView*> srvs;
+	std::vector<ID3D11ShaderResourceView*> srvsReset;
+	std::vector<ID3D11UnorderedAccessView*> uavs;
+	std::vector<ID3D11UnorderedAccessView*> uavsRendering;
+	std::vector<ID3D11UnorderedAccessView*> uavsReset;
 };
