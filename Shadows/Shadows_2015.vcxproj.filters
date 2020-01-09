@@ -278,5 +278,6 @@
   <ItemGroup>
     <FxCompile Include="ComputeShader.hlsl" />
     <FxCompile Include="IZBRendering.hlsl" />
+    <FxCompile Include="IZBBoundingBox.hlsl" />
   </ItemGroup>
 </Project>

@@ -27,6 +27,7 @@ static const float ShadowNearClip = 1.0f;
 static const bool UseComputeReduction = true;
 static const int headTextureWidth = 512;
 static const int headTextureHeight = 512;
+static const std::array<uint32, 5> bboxSizes = { 16,64,128,256,512*512 };
 
 // Finds the approximate smallest enclosing bounding sphere for a set of points. Based on
 // "An Efficient Bounding Sphere", by Jack Ritter.
@@ -423,8 +424,6 @@ void MeshRenderer::LoadShaders()
 
 	depthReductionCS = CompileCSFromFile(device, L"DepthReduction.hlsl", "DepthReductionCS",
 		"cs_5_0", opts);
-	computeshader = CompileCSFromFile(device, L"ComputeShader.hlsl", "main", "cs_5_0");
-	izbrendering = CompileCSFromFile(device, L"IZBRendering.hlsl", "main", "cs_5_0");
 
 	clearArgsBuffer = CompileCSFromFile(device, L"GPUBatch.hlsl", "ClearArgsBuffer");
 	cullDrawCalls = CompileCSFromFile(device, L"GPUBatch.hlsl", "CullDrawCalls");
@@ -1655,24 +1654,29 @@ void MeshRenderer::RenderShadowMapGPU(ID3D11DeviceContext* context, const Camera
 	}
 }
 
-void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer) {
+void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* context,
+		DepthStencilBuffer& depthBuffer) {
+	// Compute Shader (build IZB).
+	this->izbCreationCS = nullptr;
+	DXCall(device->CreateComputeShader(::ComputeShaderByteCode,
+		sizeof(::ComputeShaderByteCode), nullptr, &this->izbCreationCS));
 
-	/////////////////////////////////////////////////////////////////////////////////////////////
-// Compute Shader
-	ID3D11ComputeShader* computeshader = nullptr;
-	DXCall(device->CreateComputeShader(::ComputeShaderByteCode, sizeof(::ComputeShaderByteCode), nullptr, &computeshader));
+	// Compute Shader (compute Bounding Box per trinagle).
+	this->boundingBoxCS = nullptr;
+	DXCall(device->CreateComputeShader(::IZBBoundingBoxByteCode,
+		sizeof(::IZBBoundingBoxByteCode), nullptr, &this->boundingBoxCS));
 
-	ID3D11ComputeShader* izbrendering = nullptr;
-	DXCall(device->CreateComputeShader(::IZBRenderingByteCode, sizeof(::IZBRenderingByteCode), nullptr, &izbrendering));
+	// Compute Shader (IZB rendering).
+	this->izbRenderingCS = nullptr;
+	DXCall(device->CreateComputeShader(::IZBRenderingByteCode,
+		sizeof(::IZBRenderingByteCode), nullptr, &this->izbRenderingCS));
 
-
-	///////////////////////////////////////////////////////////////////////////////////////////
 	// IZB TEXTURES
-
 	// Create world space texture desc
 	D3D11_TEXTURE2D_DESC worldPosDesc;
 	ZeroMemory(&worldPosDesc, sizeof(worldPosDesc));
-	worldPosDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	worldPosDesc.BindFlags =
+		D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	worldPosDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	worldPosDesc.Height = 720;
 	worldPosDesc.Width = 1280;	
@@ -1689,7 +1693,8 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	worldPosUAVDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	worldPosUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
 	worldPosUAVDesc.Texture2D.MipSlice = 0;
-	DXCall(device->CreateUnorderedAccessView(this->worldPosTexture, &worldPosUAVDesc, &worldPosUAV));
+	DXCall(device->CreateUnorderedAccessView(this->worldPosTexture,
+		&worldPosUAVDesc, &worldPosUAV));
 
 	// create SRV for world space texture
 	CD3D11_SHADER_RESOURCE_VIEW_DESC worldPosSRVDesc;
@@ -1698,15 +1703,14 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	worldPosSRVDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	worldPosSRVDesc.Texture2D.MipLevels = 1;
 	worldPosSRVDesc.Texture2D.MostDetailedMip = 0;
-	DXCall(device->CreateShaderResourceView(this->worldPosTexture, &worldPosSRVDesc, &worldPosSRV));
-
-
+	DXCall(device->CreateShaderResourceView(this->worldPosTexture, &worldPosSRVDesc,
+		&worldPosSRV));
 
 	// HEAD
 	D3D11_TEXTURE2D_DESC headTextureDesc;
 	ZeroMemory(&headTextureDesc, sizeof(headTextureDesc));
-	headTextureDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	headTextureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	headTextureDesc.BindFlags =
+		D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	headTextureDesc.Format = DXGI_FORMAT_R32_SINT;
 	headTextureDesc.Height = headTextureHeight;
 	headTextureDesc.Width = headTextureWidth;
@@ -1717,7 +1721,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	headTextureDesc.Usage = D3D11_USAGE_DEFAULT;
 	DXCall(device->CreateTexture2D(&headTextureDesc, nullptr, &this->headTexture));
 
-	//COPY HEAD
+	// COPY HEAD
 	D3D11_TEXTURE2D_DESC headTextureDescStaging;
 	ZeroMemory(&headTextureDescStaging, sizeof(headTextureDescStaging));
 	headTextureDescStaging.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
@@ -1729,21 +1733,23 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	headTextureDescStaging.SampleDesc.Count = 1;
 	headTextureDescStaging.SampleDesc.Quality = 0;
 	headTextureDescStaging.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&headTextureDescStaging, nullptr, &headTextureStaging));
+	DXCall(device->CreateTexture2D(&headTextureDescStaging, nullptr,
+		&this->headTextureStaging));
 
-	//Update HeadTextureCopy Texture
+	// Update HeadTextureCopy Texture
 	int sizeHead = headTextureWidth * headTextureHeight;
 	std::vector<int> initHead(sizeHead, -1);
-	UINT SrcRowPitchHead = headTextureWidth * sizeof(DXGI_FORMAT_R32_SINT); //
+	UINT SrcRowPitchHead = headTextureWidth * sizeof(DXGI_FORMAT_R32_SINT);
 	UINT SrcDepthPitchHead = SrcRowPitchHead * headTextureHeight;
-	context->UpdateSubresource(headTextureStaging, 0, NULL, initHead.data(), SrcRowPitchHead, SrcDepthPitchHead);
-	context->CopyResource(this->headTexture, headTextureStaging);
-
+	context->UpdateSubresource(this->headTextureStaging, 0, NULL, initHead.data(),
+		SrcRowPitchHead, SrcDepthPitchHead);
+	context->CopyResource(this->headTexture, this->headTextureStaging);
 
 	// TAIL
 	D3D11_TEXTURE2D_DESC tailTextureDesc;
 	ZeroMemory(&tailTextureDesc, sizeof(tailTextureDesc));
-	tailTextureDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
+	tailTextureDesc.BindFlags =
+		D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	tailTextureDesc.Format = DXGI_FORMAT_R32_SINT;
 	tailTextureDesc.Height = 720;	//TODO: should be context.height !!!
 	tailTextureDesc.Width = 1280;	//TODO: should be context.width !!!
@@ -1754,9 +1760,10 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	tailTextureDesc.Usage = D3D11_USAGE_DEFAULT;
 	DXCall(device->CreateTexture2D(&tailTextureDesc, nullptr, &this->tailTexture));
 
-	//COPY TAIL
+	// COPY TAIL
 	D3D11_TEXTURE2D_DESC tailTextureStagingDesc;
 	ZeroMemory(&tailTextureStagingDesc, sizeof(tailTextureStagingDesc));
+	tailTextureStagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	tailTextureStagingDesc.Format = DXGI_FORMAT_R32_SINT;
 	tailTextureStagingDesc.Height = 720;	//TODO: should be context.height !!!
 	tailTextureStagingDesc.Width = 1280;	//TODO: should be context.width !!!
@@ -1765,22 +1772,26 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	tailTextureStagingDesc.SampleDesc.Count = 1;
 	tailTextureStagingDesc.SampleDesc.Quality = 0;
 	tailTextureStagingDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&tailTextureStagingDesc, nullptr, &tailTextureStaging));
+	DXCall(device->CreateTexture2D(&tailTextureStagingDesc, nullptr,
+		&this->tailTextureStaging));
 
-	//Update TAIL COPY Texture
+	// Update TAIL COPY Texture
 	int sizeTail = tailTextureStagingDesc.Width * tailTextureStagingDesc.Height;
 	std::vector<int> initTail(sizeTail, -1);
-	UINT SrcRowPitchTail = tailTextureStagingDesc.Width * sizeof(DXGI_FORMAT_R32_SINT); //
+	UINT SrcRowPitchTail = tailTextureStagingDesc.Width *
+		sizeof(DXGI_FORMAT_R32_SINT);
 	UINT SrcDepthPitchTail = SrcRowPitchTail * tailTextureStagingDesc.Height;
-	context->UpdateSubresource(tailTextureStaging, 0, NULL, initTail.data(), SrcRowPitchTail, SrcDepthPitchTail);
-	context->CopyResource(this->tailTexture, tailTextureStaging);
+	context->UpdateSubresource(this->tailTextureStaging, 0, NULL, initTail.data(),
+		SrcRowPitchTail, SrcDepthPitchTail);
+	context->CopyResource(this->tailTexture, this->tailTextureStaging);
 
 	// create UAV for head 
 	D3D11_UNORDERED_ACCESS_VIEW_DESC headUAVDesc;
 	ZeroMemory(&headUAVDesc, sizeof(headUAVDesc));
 	headUAVDesc.Format = DXGI_FORMAT_R32_SINT;
 	headUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	DXCall(device->CreateUnorderedAccessView(this->headTexture, &headUAVDesc, &headUAV));
+	DXCall(device->CreateUnorderedAccessView(this->headTexture, &headUAVDesc,
+		&this->headUAV));
 
 	// create SRV for head
 	CD3D11_SHADER_RESOURCE_VIEW_DESC headSRVDesc;
@@ -1789,14 +1800,16 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	headSRVDesc.Format = DXGI_FORMAT_R32_SINT;
 	headSRVDesc.Texture2D.MipLevels = 1;
 	headSRVDesc.Texture2D.MostDetailedMip = 0;
-	DXCall(device->CreateShaderResourceView(this->headTexture, &headSRVDesc, &headSRV));
+	DXCall(device->CreateShaderResourceView(this->headTexture, &headSRVDesc,
+		&this->headSRV));
 
 	// create UAV for tail
 	D3D11_UNORDERED_ACCESS_VIEW_DESC tailUAVDesc;
 	ZeroMemory(&tailUAVDesc, sizeof(tailUAVDesc));
 	tailUAVDesc.Format = DXGI_FORMAT_R32_SINT;
 	tailUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	DXCall(device->CreateUnorderedAccessView(this->tailTexture, &tailUAVDesc, &tailUAV));
+	DXCall(device->CreateUnorderedAccessView(this->tailTexture, &tailUAVDesc,
+		&this->tailUAV));
 
 	// create SRV for tail
 	CD3D11_SHADER_RESOURCE_VIEW_DESC tailSRVDesc;
@@ -1805,22 +1818,22 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	tailSRVDesc.Format = DXGI_FORMAT_R32_SINT;
 	tailSRVDesc.Texture2D.MipLevels = 1;
 	tailSRVDesc.Texture2D.MostDetailedMip = 0;
-	DXCall(device->CreateShaderResourceView(this->tailTexture, &tailSRVDesc, &tailSRV));
+	DXCall(device->CreateShaderResourceView(this->tailTexture, &tailSRVDesc,
+		&this->tailSRV));
 
-	///////////////////////////////////////////////////////////////////////////////////////////
 	// QUERY
 	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
 	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
 	DXCall(device->CreateQuery(&this->queryDesc, &this->queryObj));
 	context->End(queryObj);
 
-
+	// Get the  vertex count and the the byte width.
 	D3D11_BUFFER_DESC desc;
 	scene.PositionsVB->GetDesc(&desc);
 	size_t vertexCnt = (static_cast<size_t>(desc.ByteWidth) / sizeof(Float3));
 	size_t byteWidth = static_cast<size_t>(desc.ByteWidth);
 
-	//Create Buffer to copy vertex buffer in
+	// Create Buffer to copy vertex buffer in
 	D3D11_BUFFER_DESC vbDesc;
 	vbDesc.Usage = D3D11_USAGE_DEFAULT;
 	vbDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
@@ -1828,11 +1841,9 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	vbDesc.CPUAccessFlags = 0;
 	vbDesc.MiscFlags = 0;
 	vbDesc.StructureByteStride = 0;
-	DXCall(device->CreateBuffer(&vbDesc, nullptr, &vertexBuffer));
-
-	context->CopyResource(vertexBuffer, scene.PositionsVB);
-
-
+	DXCall(device->CreateBuffer(&vbDesc, nullptr, &this->vertexBuffer));
+	context->CopyResource(this->vertexBuffer, scene.PositionsVB);
+	
 	// CREATE SRV FOR VERTEX BUFFER
 	CD3D11_SHADER_RESOURCE_VIEW_DESC vertexBufferSRVDesc;
 	ZeroMemory(&vertexBufferSRVDesc, sizeof(vertexBufferSRVDesc));
@@ -1840,9 +1851,10 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	vertexBufferSRVDesc.Format = DXGI_FORMAT_R32G32B32_FLOAT;
 	vertexBufferSRVDesc.Buffer.FirstElement = 0;
 	vertexBufferSRVDesc.Buffer.NumElements = static_cast<UINT>(vertexCnt);
-	DXCall(device->CreateShaderResourceView(vertexBuffer, &vertexBufferSRVDesc, &vertexBufferSRV));
+	DXCall(device->CreateShaderResourceView(this->vertexBuffer,
+		&vertexBufferSRVDesc, &this->vertexBufferSRV));
 
-	//create Visibility mask texture and uav
+	// create Visibility mask texture and uav
 	D3D11_TEXTURE2D_DESC visMapDesc;
 	ZeroMemory(&visMapDesc, sizeof(visMapDesc));
 	visMapDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
@@ -1856,15 +1868,18 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	visMapDesc.Usage = D3D11_USAGE_DEFAULT;
 	DXCall(device->CreateTexture2D(&visMapDesc, nullptr, &this->visMap));
 
+	// Create UAV for Vis Map.
 	D3D11_UNORDERED_ACCESS_VIEW_DESC visMapUAVDesc;
 	ZeroMemory(&visMapUAVDesc, sizeof(visMapUAVDesc));
 	visMapUAVDesc.Format = DXGI_FORMAT_R32_SINT;
 	visMapUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	DXCall(device->CreateUnorderedAccessView(this->visMap, &visMapUAVDesc, &visMapUAV));
+	DXCall(device->CreateUnorderedAccessView(this->visMap, &visMapUAVDesc,
+		&this->visMapUAV));
 
-	//COPY Vis Map
+	// COPY Vis Map
 	D3D11_TEXTURE2D_DESC visMapStagingDesc;
 	ZeroMemory(&visMapStagingDesc, sizeof(visMapStagingDesc));
+	visMapStagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	visMapStagingDesc.Format = DXGI_FORMAT_R32_SINT;
 	visMapStagingDesc.Height = 720;	//TODO: should be context.height !!!
 	visMapStagingDesc.Width = 1280;	//TODO: should be context.width !!!
@@ -1873,60 +1888,72 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	visMapStagingDesc.SampleDesc.Count = 1;
 	visMapStagingDesc.SampleDesc.Quality = 0;
 	visMapStagingDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&visMapStagingDesc, nullptr, &visMapStaging));
+	DXCall(device->CreateTexture2D(&visMapStagingDesc, nullptr,
+		&this->visMapStaging));
 
-	//Update Vis map texture
+	// Update Vis map texture
 	int sizeVisMap = visMapStagingDesc.Width * visMapStagingDesc.Height;
 	std::vector<int> initVisMap(sizeVisMap, 1);
-	UINT SrcRowPitchVisMap = visMapStagingDesc.Width * sizeof(DXGI_FORMAT_R32_SINT); //
+	UINT SrcRowPitchVisMap = visMapStagingDesc.Width * sizeof(DXGI_FORMAT_R32_SINT);
 	UINT SrcDepthPitchVisMap = SrcRowPitchVisMap * visMapStagingDesc.Height;
-	context->UpdateSubresource(visMapStaging, 0, NULL, initVisMap.data(), SrcRowPitchVisMap, SrcDepthPitchVisMap);
-	context->CopyResource(this->visMap, visMapStaging);
+	context->UpdateSubresource(this->visMapStaging, 0, NULL, initVisMap.data(),
+		SrcRowPitchVisMap, SrcDepthPitchVisMap);
+	context->CopyResource(this->visMap, this->visMapStaging);
 
-	// Flo:
+	// Create the RW buffer that will contain the bounding box and the index in the
+	// vector for the rendering.
+	this->perTriangleBuffer.Initialize(device, DXGI_FORMAT_R32_UINT, sizeof(uint32),
+		scene.Indices.NumElements / 3 * 6);
+
 	// Create the vector that will contain the SRVs and the vector that will create
 	// the UAVs.
-	this->srvs = { scene.Indices.SRView, vertexBufferSRV, worldPosSRV, headSRV,
-		tailSRV };
-	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr };
-	this->uavs = { worldPosUAV, headUAV, tailUAV };
-	this->uavsRendering = { visMapUAV };
+	this->srvs = { scene.Indices.SRView, this->vertexBufferSRV, this->worldPosSRV,
+		this->headSRV, this->tailSRV, this->perTriangleBuffer.SRView };
+	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+	this->uavs = { this->worldPosUAV, this->headUAV, this->tailUAV };
+	this->uavsBB = { this->perTriangleBuffer.UAView };
+	this->uavsRendering = { this->visMapUAV };
 	this->uavsReset = { nullptr, nullptr, nullptr, };
 }
 
-// NEW
+/*
+ * MeshRenderer::RenderIZB
+ */
 ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		DepthStencilBuffer& depthBuffer, const Camera& camera,
 		const Float4x4& meshWorld, const Float4x4& characterWorld) {
 	// Constant Buffer Setup
-	computeShaderConstants.Data.viewInv = Float4x4::Invert(camera.ViewMatrix());
-	computeShaderConstants.Data.projInv =
+	this->computeShaderConstants.Data.viewInv =
+		Float4x4::Invert(camera.ViewMatrix());
+	this->computeShaderConstants.Data.projInv =
 		Float4x4::Invert(camera.ProjectionMatrix());
-	computeShaderConstants.Data.viewProj = MakeGlobalShadowMatrix(camera);
-	computeShaderConstants.Data.meshWorld = Float4x4::Transpose(meshWorld);
-	computeShaderConstants.Data.characterWorld =
+	this->computeShaderConstants.Data.viewProj = MakeGlobalShadowMatrix(camera);
+	this->computeShaderConstants.Data.meshWorld = Float4x4::Transpose(meshWorld);
+	this->computeShaderConstants.Data.characterWorld =
 		Float4x4::Transpose(characterWorld);
-	computeShaderConstants.Data.texData.x = static_cast<float>(depthBuffer.Width);
-	computeShaderConstants.Data.texData.y = static_cast<float>(depthBuffer.Height);
-	computeShaderConstants.Data.texData.z = 0.0f;
-	computeShaderConstants.Data.texData.w = 0.0f;
-	computeShaderConstants.Data.texSize.x = depthBuffer.Width;
-	computeShaderConstants.Data.texSize.y = depthBuffer.Height;
-	computeShaderConstants.Data.texSize.z = 0;
-	computeShaderConstants.Data.texSize.w = 0;
-	computeShaderConstants.Data.headSize.x = headTextureWidth;
-	computeShaderConstants.Data.headSize.y = headTextureHeight;
-	computeShaderConstants.Data.headSize.z = 0;
-	computeShaderConstants.Data.headSize.w = 0;
-	computeShaderConstants.Data.vertexCount.x = scene.Indices.NumElements / 3;
-	computeShaderConstants.Data.vertexCount.y = 0;
-	computeShaderConstants.Data.vertexCount.z = 0;
-	computeShaderConstants.Data.vertexCount.w = 0;
-	computeShaderConstants.Data.lightDir = AppSettings::LightDirection;
+	this->computeShaderConstants.Data.texData.x =
+		static_cast<float>(depthBuffer.Width);
+	this->computeShaderConstants.Data.texData.y =
+		static_cast<float>(depthBuffer.Height);
+	this->computeShaderConstants.Data.texData.z = 0.0f;
+	this->computeShaderConstants.Data.texData.w = 0.0f;
+	this->computeShaderConstants.Data.texSize.x = depthBuffer.Width;
+	this->computeShaderConstants.Data.texSize.y = depthBuffer.Height;
+	this->computeShaderConstants.Data.texSize.z = 0;
+	this->computeShaderConstants.Data.texSize.w = 0;
+	this->computeShaderConstants.Data.headSize.x = headTextureWidth;
+	this->computeShaderConstants.Data.headSize.y = headTextureHeight;
+	this->computeShaderConstants.Data.headSize.z = 0;
+	this->computeShaderConstants.Data.headSize.w = 0;
+	this->computeShaderConstants.Data.vertexCount.x = scene.Indices.NumElements / 3;
+	this->computeShaderConstants.Data.vertexCount.y = 0;
+	this->computeShaderConstants.Data.vertexCount.z = 0;
+	this->computeShaderConstants.Data.vertexCount.w = 0;
+	this->computeShaderConstants.Data.lightDir = AppSettings::LightDirection;
 
 	// Appy the changes and set the constants.
-	computeShaderConstants.ApplyChanges(context);
-	computeShaderConstants.SetCS(context, 1);
+	this->computeShaderConstants.ApplyChanges(context);
+	this->computeShaderConstants.SetCS(context, 1);
 
 	// Reset textures to -1 / 1
 	{
@@ -1942,7 +1969,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		ProfileBlock block(L"IZB Creation");
 
 		//Setup for dispatch
-		SetCSShader(context, computeshader);
+		SetCSShader(context, this->izbCreationCS);
 		SetCSInputs(context, depthBuffer.SRView);
 		context->CSSetUnorderedAccessViews(0, static_cast<UINT>(this->uavs.size()),
 			this->uavs.data(), nullptr);
@@ -1963,24 +1990,123 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			nullptr);
 	}
 
-	// Start IZBRendering Compute Shader
+	// Start the BoundingBox computataion.
+	std::array<size_t, 5> counts = { 0,0,0,0,0 };
 	{
-		ProfileBlock block1(L"IZB Rendering");
+		ProfileBlock block(L"Bounding Box computation");
 
 		//Setup for dispatch
-		SetCSShader(context, izbrendering);
-		computeShaderConstants.ApplyChanges(context);
-		computeShaderConstants.SetCS(context, 1);
+		SetCSShader(context, this->boundingBoxCS);
+		this->computeShaderConstants.SetCS(context, 1);
+		context->CSSetShaderResources(0, 2u, this->srvs.data());
+		context->CSSetUnorderedAccessViews(0,
+			static_cast<UINT>(this->uavsBB.size()), this->uavsBB.data(), nullptr);
+
+		// Dispatch the compute shader.
+		uint32 dispatchX = this->computeShaderConstants.Data.vertexCount.x / 64 + 1;
+		context->Dispatch(dispatchX, 1, 1);
+
+		// wait for compute shader
+		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+
+		// Cleanup
+		ClearCSInputs(context);
+		ClearCSOutputs(context);
+		context->CSSetShaderResources(0, 2u, this->srvsReset.data());
+		context->CSSetUnorderedAccessViews(0, 1u, this->uavsReset.data(), nullptr);
+
+		// Download the per triangle data.
+		if (this->stagingBuffer == nullptr) {
+			// Get the description of the per triangle data buffer.
+			D3D11_BUFFER_DESC desc;
+			this->perTriangleBuffer.Buffer->GetDesc(&desc);
+			desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE |
+				D3D11_CPU_ACCESS_READ;
+
+			// Create the staging buffer.
+			DXCall(device->CreateBuffer(&desc, nullptr, &this->stagingBuffer));
+			this->perTriangleBufferCpu.resize(
+				this->perTriangleBuffer.NumElements / 6);
+		}
+
+		// Copy the per triangle data to the staging buffer.
+		context->CopyResource(this->stagingBuffer, this->perTriangleBuffer.Buffer);
+
+		// Download the per triangle data.
+		D3D11_MAPPED_SUBRESOURCE subRes;
+		DXCall(context->Map(this->stagingBuffer, 0, D3D11_MAP_READ_WRITE, 0, &subRes));
+		uint32* dataPtr = reinterpret_cast<uint32*>(
+			this->perTriangleBufferCpu.data());
+		::memcpy(dataPtr, subRes.pData, subRes.DepthPitch);
+
+		// Sort the buffer elements according to the bbox size index.
+		std::sort(this->perTriangleBufferCpu.begin(),
+			this->perTriangleBufferCpu.end(),
+			[](const PerTriangleData& lhs, const PerTriangleData& rhs) {
+				return lhs.index < rhs.index;
+			});
+
+		// Count the number of elements per bounding box size.
+		for (const auto element : this->perTriangleBufferCpu) {
+			counts[element.index]++;
+		}
+
+		// Upload the sorted data.
+		::memcpy(subRes.pData, dataPtr, subRes.DepthPitch);
+
+		// Unmap the staging buffer.
+		context->Unmap(this->stagingBuffer, 0);
+
+		// Copy the per triangle data to the buffer.
+		context->CopyResource(this->perTriangleBuffer.Buffer, this->stagingBuffer);
+	}
+
+	// Start IZBRendering Compute Shader
+	{
+		ProfileBlock block(L"IZB Rendering");
+
+		//Setup for dispatch
+		SetCSShader(context, this->izbRenderingCS);
+		this->computeShaderConstants.SetCS(context, 1);
 		context->CSSetShaderResources(0, static_cast<UINT>(this->srvs.size()),
 			this->srvs.data());
 		context->CSSetUnorderedAccessViews(0,
 			static_cast<UINT>(this->uavsRendering.size()),
 			this->uavsRendering.data(), nullptr);
-		
-		// Dispatch the compute shader.
-		int size = scene.Indices.NumElements / 3;
-		uint32 dispatchX = size / 128 + 1;
-		context->Dispatch(dispatchX, 1, 1);
+
+#if 0
+		// Dispatch the compute shaders.
+		for (size_t i = 0; i < counts.size(); ++i) {
+			// Update offsets into triangle buffer
+			if (i > 0) {
+				this->computeShaderConstants.Data.vertexCount.y += counts[i - 1];
+			}
+			this->computeShaderConstants.Data.vertexCount.z += counts[i];
+
+			// Appy the changes and set the constants.
+			this->computeShaderConstants.ApplyChanges(context);
+			this->computeShaderConstants.SetCS(context, 1);
+
+			// Dispatch the shader.
+			uint32 dispatchX = counts[i] / 64 + 1;
+			uint32 dispatchY = bboxSizes[i] / 16 + 1;
+			context->Dispatch(dispatchX, dispatchY, 1);
+		}
+#else
+		// Update offsets into triangle buffer
+		this->computeShaderConstants.Data.vertexCount.y = 0;
+		this->computeShaderConstants.Data.vertexCount.z =
+			this->perTriangleBufferCpu.size();
+
+		// Appy the changes and set the constants.
+		this->computeShaderConstants.ApplyChanges(context);
+		this->computeShaderConstants.SetCS(context, 1);
+
+		// Dispatch the shader.
+		uint32 dispatchX = this->computeShaderConstants.Data.vertexCount.z / 64 + 1;
+		uint32 dispatchY = /*bboxSizes[4]*/1024 / 16 + 1;
+		context->Dispatch(dispatchX, dispatchY, 1);
+#endif
 
 		// wait for compute shader
 		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);

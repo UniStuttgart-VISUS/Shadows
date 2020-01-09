@@ -10,6 +10,8 @@
 
 #pragma once
 
+#include <array>
+
 #include "SampleFramework11/PCH.h"
 
 #include "SampleFramework11/Model.h"
@@ -19,6 +21,7 @@
 #include "SampleFramework11/SH.h"
 #include "SampleFramework11/ShaderCompilation.h"
 #include "ComputeShader.h"
+#include "IZBBoundingBox.h"
 #include "IZBRendering.h"
 #include "AppSettings.h"
 #include "SharedConstants.h"
@@ -55,6 +58,19 @@ struct MeshData
 	std::vector<ID3D11InputLayoutPtr> DepthInputLayouts;
 
 	MeshData() : Model(NULL), NumSuccessfulTests(0) {}
+};
+
+
+struct PerTriangleData {
+	PerTriangleData() : minX(0u), minY(0u), maxX(0u), maxY(0u), index(0u),
+		tIndex(0u) { }
+
+	uint32 minX;
+	uint32 minY;
+	uint32 maxX;
+	uint32 maxY;
+	uint32 index;
+	uint32 tIndex;
 };
 
 class MeshRenderer
@@ -179,9 +195,6 @@ protected:
 	StructuredBuffer cascadeScaleBuffer;
 	StructuredBuffer cascadePlanesBuffer;
 
-	ComputeShaderPtr computeshader;
-	ComputeShaderPtr izbrendering;
-
 	// Constant buffers
 	struct DepthOnlyConstants
 	{
@@ -296,6 +309,14 @@ protected:
 	std::vector<ID3D11ShaderResourceView*> srvs;
 	std::vector<ID3D11ShaderResourceView*> srvsReset;
 	std::vector<ID3D11UnorderedAccessView*> uavs;
+	std::vector<ID3D11UnorderedAccessView*> uavsBB;
 	std::vector<ID3D11UnorderedAccessView*> uavsRendering;
 	std::vector<ID3D11UnorderedAccessView*> uavsReset;
+
+	ID3D11ComputeShader* izbCreationCS;
+	ID3D11ComputeShader* boundingBoxCS;
+	ID3D11ComputeShader* izbRenderingCS;
+	RWBuffer perTriangleBuffer;
+	ID3D11BufferPtr stagingBuffer;
+	std::vector<PerTriangleData> perTriangleBufferCpu;
 };
