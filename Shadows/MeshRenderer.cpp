@@ -27,7 +27,7 @@ static const float ShadowNearClip = 1.0f;
 static const bool UseComputeReduction = true;
 static const int headTextureWidth = 512;
 static const int headTextureHeight = 512;
-static const std::array<uint32, 5> bboxSizes = { 16,64,128,256,512*512 };
+static const std::array<uint32, 5> bboxSizes = { 8,32,128,512,512*512 };
 
 // Finds the approximate smallest enclosing bounding sphere for a set of points. Based on
 // "An Efficient Bounding Sphere", by Jack Ritter.
@@ -1655,7 +1655,7 @@ void MeshRenderer::RenderShadowMapGPU(ID3D11DeviceContext* context, const Camera
 }
 
 void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* context,
-		DepthStencilBuffer& depthBuffer) {
+		DepthStencilBuffer& depthBuffer, uint32 backbuffer_width, uint32 backbuffer_height) {
 	// Compute Shader (build IZB).
 	this->izbCreationCS = nullptr;
 	DXCall(device->CreateComputeShader(::ComputeShaderByteCode,
@@ -1671,6 +1671,9 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	DXCall(device->CreateComputeShader(::IZBRenderingByteCode,
 		sizeof(::IZBRenderingByteCode), nullptr, &this->izbRenderingCS));
 
+    uint viewport_width = backbuffer_width;
+    uint viewport_height = backbuffer_height;
+
 	// IZB TEXTURES
 	// Create world space texture desc
 	D3D11_TEXTURE2D_DESC worldPosDesc;
@@ -1678,8 +1681,8 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	worldPosDesc.BindFlags =
 		D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	worldPosDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	worldPosDesc.Height = 720;
-	worldPosDesc.Width = 1280;	
+	worldPosDesc.Height = viewport_height;
+	worldPosDesc.Width = viewport_width;
 	worldPosDesc.ArraySize = 1;
 	worldPosDesc.MipLevels = 1;
 	worldPosDesc.SampleDesc.Count = 1;
@@ -1751,8 +1754,8 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	tailTextureDesc.BindFlags =
 		D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	tailTextureDesc.Format = DXGI_FORMAT_R32_SINT;
-	tailTextureDesc.Height = 720;	//TODO: should be context.height !!!
-	tailTextureDesc.Width = 1280;	//TODO: should be context.width !!!
+	tailTextureDesc.Height = viewport_height;	//TODO: should be context.height !!!
+	tailTextureDesc.Width = viewport_width;	//TODO: should be context.width !!!
 	tailTextureDesc.ArraySize = 1;
 	tailTextureDesc.MipLevels = 1;
 	tailTextureDesc.SampleDesc.Count = 1;
@@ -1765,8 +1768,8 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	ZeroMemory(&tailTextureStagingDesc, sizeof(tailTextureStagingDesc));
 	tailTextureStagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	tailTextureStagingDesc.Format = DXGI_FORMAT_R32_SINT;
-	tailTextureStagingDesc.Height = 720;	//TODO: should be context.height !!!
-	tailTextureStagingDesc.Width = 1280;	//TODO: should be context.width !!!
+	tailTextureStagingDesc.Height = viewport_height;	//TODO: should be context.height !!!
+	tailTextureStagingDesc.Width = viewport_width;	//TODO: should be context.width !!!
 	tailTextureStagingDesc.ArraySize = 1;
 	tailTextureStagingDesc.MipLevels = 1;
 	tailTextureStagingDesc.SampleDesc.Count = 1;
@@ -1859,8 +1862,8 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	ZeroMemory(&visMapDesc, sizeof(visMapDesc));
 	visMapDesc.BindFlags = D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
 	visMapDesc.Format = DXGI_FORMAT_R32_SINT;
-	visMapDesc.Height = 720;	//TODO: should be context.height !!!
-	visMapDesc.Width = 1280;	//TODO: should be context.width !!!
+	visMapDesc.Height = viewport_height;	//TODO: should be context.height !!!
+	visMapDesc.Width = viewport_width;	//TODO: should be context.width !!!
 	visMapDesc.ArraySize = 1;
 	visMapDesc.MipLevels = 1;
 	visMapDesc.SampleDesc.Count = 1;
@@ -1881,8 +1884,8 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	ZeroMemory(&visMapStagingDesc, sizeof(visMapStagingDesc));
 	visMapStagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	visMapStagingDesc.Format = DXGI_FORMAT_R32_SINT;
-	visMapStagingDesc.Height = 720;	//TODO: should be context.height !!!
-	visMapStagingDesc.Width = 1280;	//TODO: should be context.width !!!
+	visMapStagingDesc.Height = viewport_height;	//TODO: should be context.height !!!
+	visMapStagingDesc.Width = viewport_width;	//TODO: should be context.width !!!
 	visMapStagingDesc.ArraySize = 1;
 	visMapStagingDesc.MipLevels = 1;
 	visMapStagingDesc.SampleDesc.Count = 1;
@@ -2072,7 +2075,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			static_cast<UINT>(this->uavsRendering.size()),
 			this->uavsRendering.data(), nullptr);
 
-#if 0
+#if 1
 		// Dispatch the compute shaders.
 		for (size_t i = 0; i < counts.size(); ++i) {
 			// Update offsets into triangle buffer
@@ -2087,7 +2090,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 
 			// Dispatch the shader.
 			uint32 dispatchX = counts[i] / 64 + 1;
-			uint32 dispatchY = bboxSizes[i] / 16 + 1;
+			uint32 dispatchY = bboxSizes[i] / 8 + 1;
 			context->Dispatch(dispatchX, dispatchY, 1);
 		}
 #else

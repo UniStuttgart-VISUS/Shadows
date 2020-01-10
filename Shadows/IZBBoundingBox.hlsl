@@ -77,13 +77,13 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	// Compute the index.
 	uint index = 0;
 	int bbSize = (1 + maxX - minX) * (1 + maxY - minY);
-	if (bbSize > 16 && bbSize <= 64) {
+	if (bbSize > 8 && bbSize <= 32) {
 		index = 1;
-	} else if (bbSize > 64 && bbSize <= 128) {
+	} else if (bbSize > 32 && bbSize <= 128) {
 		index = 2;
-	} else if (bbSize > 128 && bbSize <= 256) {
+	} else if (bbSize > 128 && bbSize <= 512) {
 		index = 3;
-	} else if (bbSize > 256) {
+	} else if (bbSize > 512) {
 		index = 4;
 	}
 

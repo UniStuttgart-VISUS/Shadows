@@ -87,7 +87,7 @@ public:
 	MeshRenderer();
 
 	void Initialize(ID3D11Device* device, ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer);
-	void InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer);
+	void InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* context, DepthStencilBuffer& depthBuffer, uint32 backbuffer_width, uint32 backbuffer_height);
 	void SetSceneMesh(ID3D11DeviceContext* context, Model* model, const Float4x4& world);
 	void SetCharacterMesh(ID3D11DeviceContext* context, Model* model, const Float4x4& world);
 

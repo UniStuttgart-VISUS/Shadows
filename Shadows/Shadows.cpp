@@ -111,6 +111,8 @@ void ShadowsApp::Initialize()
 
 	meshRenderer.Initialize(device, deviceManager.ImmediateContext(),depthBuffer);
 
+    
+
 	ID3D11DeviceContext* context = deviceManager.ImmediateContext();
 
 
@@ -123,7 +125,9 @@ void ShadowsApp::Initialize()
 	characterWorld.SetTranslation(CharacterPos);
 	meshRenderer.SetCharacterMesh(context, &characterMesh, characterWorld);
 
-	meshRenderer.InitializeIZB(device, deviceManager.ImmediateContext(), depthBuffer);
+    auto bb_height = deviceManager.BackBufferHeight();
+    auto bb_width = deviceManager.BackBufferWidth();
+    meshRenderer.InitializeIZB(device, deviceManager.ImmediateContext(), depthBuffer, bb_width, bb_height);
 
 	skybox.Initialize(device);
 
@@ -213,7 +217,9 @@ void ShadowsApp::Update(const Timer& timer)
 		float scale = MeshScales[AppSettings::CurrentScene];
 		meshRenderer.SetSceneMesh(deviceManager.ImmediateContext(), &models[AppSettings::CurrentScene],
 			XMMatrixScaling(scale, scale, scale));
-		meshRenderer.InitializeIZB(deviceManager.Device(), deviceManager.ImmediateContext(), depthBuffer);
+        auto bb_height = deviceManager.BackBufferHeight();
+        auto bb_width = deviceManager.BackBufferWidth();
+        meshRenderer.InitializeIZB(deviceManager.Device(), deviceManager.ImmediateContext(), depthBuffer, bb_width,bb_height);
 	}
 
 	AppSettings::Update();

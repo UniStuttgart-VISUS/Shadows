@@ -89,7 +89,7 @@ cbuffer CSConstants : register(b1) {
 };
 
 
-[numthreads(64, 16, 1)]
+[numthreads(64, 8, 1)]
 void main(uint3 DTid : SV_DispatchThreadID) {
 	// Skip unnecessary threads...
 	uint id = DTid.x + vertexCount.y;
@@ -138,7 +138,7 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 		float3 samplePoint_ws = WORLDPOS[samplePoint].xyz;
 	
 		// Adjust samplepoint to avoid self intersection.
-		float3 adjustedSamplePoint_ws = samplePoint_ws + 0.1f * lightDir;
+		float3 adjustedSamplePoint_ws = samplePoint_ws + 0.025f * lightDir;
 	
 		// Check if sample point intersects with the current triangle.
 		bool intersection = RayIntersectsTriangle(adjustedSamplePoint_ws,
