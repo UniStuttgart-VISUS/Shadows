@@ -115,10 +115,7 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	uint minY = BBoxData[id * 6 + 1];
 	uint maxX = BBoxData[id * 6 + 2];
 	uint maxY = BBoxData[id * 6 + 3];
-	uint diffX = (maxX - minX);
-	if (diffX == 0) {
-		diffX = 1;
-	}
+	uint diffX = (maxX - minX) + 1;
 
 	// Get the coordinates in the bounding box.
 	uint xCoord = minX + (DTid.y % diffX);

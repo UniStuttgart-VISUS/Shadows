@@ -69,9 +69,14 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	int maxX = ceil(max(v0_u, max(v1_u, v2_u)));
 	int maxY = ceil(max(v0_v, max(v1_v, v2_v)));
 
+    minX = max(0, minX);
+    minY = max(0, minY);
+    maxX = min(headSize.x, maxX);
+    maxY = min(headSize.y, maxY);
+
 	// Compute the index.
 	uint index = 0;
-	int bbSize = (maxX - minX) * (maxY - minY);
+	int bbSize = (1 + maxX - minX) * (1 + maxY - minY);
 	if (bbSize > 16 && bbSize <= 64) {
 		index = 1;
 	} else if (bbSize > 64 && bbSize <= 128) {
