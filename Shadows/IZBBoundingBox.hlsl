@@ -3,7 +3,8 @@
 
 StructuredBuffer<uint> Indices : register(t0);
 Buffer<float3> Vertices : register(t1);
-RWBuffer<uint> Output : register(u0);
+RWBuffer<uint> OutputBBox : register(u0);
+RWBuffer<uint> OutputHist : register(u1);
 
 
 cbuffer CSConstants : register(b1) {
@@ -38,6 +39,18 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	float4 v0_ws = mul(float4(v0, 1.0f), meshWorld).xyzw;
 	float4 v1_ws = mul(float4(v1, 1.0f), meshWorld).xyzw;
 	float4 v2_ws = mul(float4(v2, 1.0f), meshWorld).xyzw;
+
+	// Face culling.
+	// TODO: does not work 100%...
+	float3 camPos = float3(viewInv[0][3], viewInv[1][3], viewInv[2][3]);
+	float3 edge1 = v1_ws.xyz - v0_ws.xyz;
+	float3 edge2 = v2_ws.xyz - v0_ws.xyz;
+	float3 normal = normalize(cross(edge1, edge2));
+	float3 viewDir = normalize(v0_ws.xyz - camPos);
+	float result = dot(normal, viewDir);
+	if (result <= 0.0) {
+		//return;
+	}
 
 	// Transformation to Light Space via orthographic projection
 	float4 v0_ls = mul(viewProj, v0_ws);
@@ -89,14 +102,20 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 		index = 5;
 	}
 
+	// Increase the counter for the histogram bin and used the returned value as the
+	// index for the output buffer.
+	uint oldVal = 0;
+	InterlockedAdd(OutputHist[index], 1, oldVal);
+
 	// Save the output to the buffer.
-	int idx = DTid.x * 6;
-	Output[idx + 0] = uint(minX);
-	Output[idx + 1] = uint(minY);
-	Output[idx + 2] = uint(maxX);
-	Output[idx + 3] = uint(maxY);
-	Output[idx + 4] = index;
-	Output[idx + 5] = DTid.x;
+	//int idx = DTid.x * 6;
+	int idx = (index * (vertexCount.x * 6)) + (oldVal * 6);
+	OutputBBox[idx + 0] = uint(minX);
+	OutputBBox[idx + 1] = uint(minY);
+	OutputBBox[idx + 2] = uint(maxX);
+	OutputBBox[idx + 3] = uint(maxY);
+	OutputBBox[idx + 4] = index;
+	OutputBBox[idx + 5] = DTid.x;
 }
 
 

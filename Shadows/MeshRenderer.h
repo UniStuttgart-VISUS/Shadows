@@ -23,6 +23,8 @@
 #include "ComputeShader.h"
 #include "IZBBoundingBox.h"
 #include "IZBRendering.h"
+#include "IZBResetBuffers.h"
+#include "IZBResetTextures.h"
 #include "AppSettings.h"
 #include "SharedConstants.h"
 
@@ -295,11 +297,8 @@ protected:
 
 	ID3D11Texture2D* worldPosTexture;
 	ID3D11Texture2D* headTexture;
-	ID3D11Texture2D* headTextureStaging;
 	ID3D11Texture2D* tailTexture;
-	ID3D11Texture2D* tailTextureStaging;
 	ID3D11Texture2D* visMap;
-	ID3D11Texture2D* visMapStaging;
 
 
 	ID3D11Buffer* vertexBuffer;
@@ -309,6 +308,7 @@ protected:
 	std::vector<ID3D11ShaderResourceView*> srvs;
 	std::vector<ID3D11ShaderResourceView*> srvsReset;
 	std::vector<ID3D11UnorderedAccessView*> uavs;
+	std::vector<ID3D11UnorderedAccessView*> uavsClear;
 	std::vector<ID3D11UnorderedAccessView*> uavsBB;
 	std::vector<ID3D11UnorderedAccessView*> uavsRendering;
 	std::vector<ID3D11UnorderedAccessView*> uavsReset;
@@ -316,7 +316,10 @@ protected:
 	ID3D11ComputeShader* izbCreationCS;
 	ID3D11ComputeShader* boundingBoxCS;
 	ID3D11ComputeShader* izbRenderingCS;
+	ID3D11ComputeShader* izbResetBuffCS;
+	ID3D11ComputeShader* izbResetTexCS;
 	RWBuffer perTriangleBuffer;
+	RWBuffer histogramCount;
 	ID3D11BufferPtr stagingBuffer;
 	std::vector<PerTriangleData> perTriangleBufferCpu;
 };

@@ -7,48 +7,52 @@ Texture2D<float4> WORLDPOS : register(t2);
 Texture2D<int> HEAD : register(t3);
 Texture2D<int> TAIL : register(t4);
 Buffer<uint> BBoxData : register(t5);
+Buffer<uint> InputHist : register(t6);
 RWTexture2D<int> VISMASK : register(u0);
 
 
-//ray-triangle based on the Möller–Trumbore  intersection algorithm
-bool RayIntersectsTriangle(float3 rayOrigin, float3 rayVector, float3 vertex0,
-		float3 vertex1, float3 vertex2) {
-    const float EPSILON = 0.0000001f;
-    bool result = false;
-    
-    float3 edge1 = vertex1 - vertex0;
-    float3 edge2 = vertex2 - vertex0;
-    
-    float3 h = cross(rayVector, edge2);
-    float a = dot(edge1, h); 
-    if (a > -EPSILON && a < EPSILON) {
-        result = false; // This ray is parallel to this triangle.
-    } else {
-        float f = 1.0 / a;
-        float3 s = rayOrigin - vertex0;
-        float u = f * dot(s, h);
-        if (u < 0.0 || u > 1.0) {
-            result = false;
-        } else {
-            float3 q = cross(s, edge1);
-            float v = f * dot(rayVector, q);
-            if (v < 0.0 || u + v > 1.0) {
-                result = false;
-            } else {
-                // At this stage we can compute t to find out where the intersection
-				// point is on the line.
-                float t = f * dot(edge2, q);
-                if (t > EPSILON && t < 1 / EPSILON) {
-                    result = true;
-                } else {
-                    // This means that there is a line intersection but not a ray
-					// intersection.
-                    result = false;
-                }
-            }
-        }
-    }
-    return result;
+cbuffer CSConstants : register(b1) {
+	float4x4 viewInv;
+	float4x4 projInv;
+	float4x4 viewProj;
+	float4x4 meshWorld;
+	float4x4 characterWorld;
+	float4 texData;
+	uint4 texSize;
+	uint4 headSize;
+	uint4 vertexCount;
+	float3 lightDir;
+};
+
+
+// ray-triangle based on the Möller–Trumbore  intersection algorithm
+bool RayIntersectsTriangle(const float3 rayOrigin, const float3 rayVector,
+		const float3 vertex0, const float3 edge1, const float3 edge2, const float a,
+		const float3 h, const float f, const float EPSILON, const float INFINITY) {
+	bool result = false;
+	float3 s = rayOrigin - vertex0;
+	float u = f * dot(s, h);
+	if (u < 0.0 || u > 1.0) {
+		result = false;
+	} else {
+		float3 q = cross(s, edge1);
+		float v = f * dot(rayVector, q);
+		if (v < 0.0 || u + v > 1.0) {
+			result = false;
+		} else {
+			// At this stage we can compute t to find out where the intersection
+			// point is on the line.
+			float t = f * dot(edge2, q);
+			if (t > EPSILON && t < INFINITY) {
+				result = true;
+			} else {
+				// This means that there is a line intersection but not a ray
+				// intersection.
+				result = false;
+			}
+		}
+	}
+	return result;
 }
 
 
@@ -62,11 +66,6 @@ uint q(uint z) {
 	return floor((sqrt(8 * z + 1) - 1) / 2);
 }
 
-// returns a single, unique value given two integer values x and y
-int pairingFunction(int2 tuple) {
-	return tuple.y + 0.5 * (tuple.x + tuple.y) * (tuple.x + tuple.y + 1);
-}
-
 // calculates the inverse pairing function of an intger z to get x and y
 int2 inversePairingFunction(int z) {
 	int pi2 = z - f(q(z));
@@ -74,31 +73,17 @@ int2 inversePairingFunction(int z) {
 	return int2(pi1, pi2);
 }
 
-
-cbuffer CSConstants : register(b1) {
-	float4x4 viewInv;
-	float4x4 projInv;
-	float4x4 viewProj;
-	float4x4 meshWorld;
-	float4x4 characterWorld;
-	float4 texData;
-	uint4 texSize;
-	uint4 headSize;
-	uint4 vertexCount;
-    float3 lightDir;
-};
-
-
 [numthreads(64, 8, 1)]
 void main(uint3 DTid : SV_DispatchThreadID) {
 	// Skip unnecessary threads...
-	uint id = DTid.x + vertexCount.y;
-	if (id >= vertexCount.z) {
+	uint id = DTid.x;
+	if (id >= InputHist[vertexCount.y]) {
 		return;
 	}
 
 	// Get the triangles.
-	uint tIdx = BBoxData[id * 6 + 5];
+	id = vertexCount.y * (vertexCount.x * 6) + (id * 6);
+	uint tIdx = BBoxData[id + 5];
 	int3 triangleIndices = int3(Indices.Load(tIdx * 3 + 0),
 		Indices.Load(tIdx * 3 + 1), Indices.Load(tIdx * 3 + 2));
 	float3 v0 = Vertices.Load(triangleIndices.x);
@@ -110,11 +95,25 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	float4 v1_ws = mul(float4(v1, 1.0f), meshWorld).xyzw;
 	float4 v2_ws = mul(float4(v2, 1.0f), meshWorld).xyzw;
 
+	// Precomputation of values for the Ray -> Triangle intersection.
+	float EPSILON = 0.0000001;
+	float INFINITY = 1.0 / EPSILON;
+	float3 edge1 = v1_ws.xyz - v0_ws.xyz;
+	float3 edge2 = v2_ws.xyz - v0_ws.xyz;
+	float3 h = cross(lightDir, edge2);
+	float a = dot(edge1, h);
+	float f = 1.0 / a;
+
+	// Since this is true for all sample points we can skip the while loop.
+	if (a > -EPSILON && a < EPSILON) {
+		return;
+	}
+
 	// Get bounding box corner values.
-	uint minX = BBoxData[id * 6 + 0];
-	uint minY = BBoxData[id * 6 + 1];
-	uint maxX = BBoxData[id * 6 + 2];
-	uint maxY = BBoxData[id * 6 + 3];
+	uint minX = BBoxData[id + 0];
+	uint minY = BBoxData[id + 1];
+	uint maxX = BBoxData[id + 2];
+	uint maxY = BBoxData[id + 3];
 	uint diffX = (maxX - minX) + 1;
 
 	// Get the coordinates in the bounding box.
@@ -142,7 +141,7 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	
 		// Check if sample point intersects with the current triangle.
 		bool intersection = RayIntersectsTriangle(adjustedSamplePoint_ws,
-			lightDir, v0_ws.xyz, v1_ws.xyz, v2_ws.xyz);
+			lightDir, v0_ws.xyz, edge1, edge2, a, h, f, EPSILON, INFINITY);
 		if (intersection) {
 			// The sample point is shadowed.
 			VISMASK[samplePoint] = 0;

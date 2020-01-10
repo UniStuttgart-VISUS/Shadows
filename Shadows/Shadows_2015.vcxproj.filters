@@ -279,5 +279,7 @@
     <FxCompile Include="ComputeShader.hlsl" />
     <FxCompile Include="IZBRendering.hlsl" />
     <FxCompile Include="IZBBoundingBox.hlsl" />
+    <FxCompile Include="IZBResetTextures.hlsl" />
+    <FxCompile Include="IZBResetBuffers.hlsl" />
   </ItemGroup>
 </Project>

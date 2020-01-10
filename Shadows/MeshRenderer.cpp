@@ -1674,6 +1674,16 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	DXCall(device->CreateComputeShader(::IZBRenderingByteCode,
 		sizeof(::IZBRenderingByteCode), nullptr, &this->izbRenderingCS));
 
+	// Compute Shader (IZB Buffer reset).
+	this->izbResetBuffCS = nullptr;
+	DXCall(device->CreateComputeShader(::IZBResetBuffersByteCode,
+		sizeof(::IZBResetBuffersByteCode), nullptr, &this->izbResetBuffCS));
+
+	// Compute Shader (IZB Texutre reset).
+	this->izbResetTexCS = nullptr;
+	DXCall(device->CreateComputeShader(::IZBResetTexturesByteCode,
+		sizeof(::IZBResetTexturesByteCode), nullptr, &this->izbResetTexCS));
+
     uint viewport_width = backbuffer_width;
     uint viewport_height = backbuffer_height;
 
@@ -1727,30 +1737,6 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	headTextureDesc.Usage = D3D11_USAGE_DEFAULT;
 	DXCall(device->CreateTexture2D(&headTextureDesc, nullptr, &this->headTexture));
 
-	// COPY HEAD
-	D3D11_TEXTURE2D_DESC headTextureDescStaging;
-	ZeroMemory(&headTextureDescStaging, sizeof(headTextureDescStaging));
-	headTextureDescStaging.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	headTextureDescStaging.Format = DXGI_FORMAT_R32_SINT;
-	headTextureDescStaging.Height = headTextureHeight;
-	headTextureDescStaging.Width = headTextureWidth;
-	headTextureDescStaging.ArraySize = 1;
-	headTextureDescStaging.MipLevels = 1;
-	headTextureDescStaging.SampleDesc.Count = 1;
-	headTextureDescStaging.SampleDesc.Quality = 0;
-	headTextureDescStaging.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&headTextureDescStaging, nullptr,
-		&this->headTextureStaging));
-
-	// Update HeadTextureCopy Texture
-	int sizeHead = headTextureWidth * headTextureHeight;
-	std::vector<int> initHead(sizeHead, -1);
-	UINT SrcRowPitchHead = headTextureWidth * sizeof(DXGI_FORMAT_R32_SINT);
-	UINT SrcDepthPitchHead = SrcRowPitchHead * headTextureHeight;
-	context->UpdateSubresource(this->headTextureStaging, 0, NULL, initHead.data(),
-		SrcRowPitchHead, SrcDepthPitchHead);
-	context->CopyResource(this->headTexture, this->headTextureStaging);
-
 	// TAIL
 	D3D11_TEXTURE2D_DESC tailTextureDesc;
 	ZeroMemory(&tailTextureDesc, sizeof(tailTextureDesc));
@@ -1765,31 +1751,6 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	tailTextureDesc.SampleDesc.Quality = 0;
 	tailTextureDesc.Usage = D3D11_USAGE_DEFAULT;
 	DXCall(device->CreateTexture2D(&tailTextureDesc, nullptr, &this->tailTexture));
-
-	// COPY TAIL
-	D3D11_TEXTURE2D_DESC tailTextureStagingDesc;
-	ZeroMemory(&tailTextureStagingDesc, sizeof(tailTextureStagingDesc));
-	tailTextureStagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	tailTextureStagingDesc.Format = DXGI_FORMAT_R32_SINT;
-	tailTextureStagingDesc.Height = viewport_height;	//TODO: should be context.height !!!
-	tailTextureStagingDesc.Width = viewport_width;	//TODO: should be context.width !!!
-	tailTextureStagingDesc.ArraySize = 1;
-	tailTextureStagingDesc.MipLevels = 1;
-	tailTextureStagingDesc.SampleDesc.Count = 1;
-	tailTextureStagingDesc.SampleDesc.Quality = 0;
-	tailTextureStagingDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&tailTextureStagingDesc, nullptr,
-		&this->tailTextureStaging));
-
-	// Update TAIL COPY Texture
-	int sizeTail = tailTextureStagingDesc.Width * tailTextureStagingDesc.Height;
-	std::vector<int> initTail(sizeTail, -1);
-	UINT SrcRowPitchTail = tailTextureStagingDesc.Width *
-		sizeof(DXGI_FORMAT_R32_SINT);
-	UINT SrcDepthPitchTail = SrcRowPitchTail * tailTextureStagingDesc.Height;
-	context->UpdateSubresource(this->tailTextureStaging, 0, NULL, initTail.data(),
-		SrcRowPitchTail, SrcDepthPitchTail);
-	context->CopyResource(this->tailTexture, this->tailTextureStaging);
 
 	// create UAV for head 
 	D3D11_UNORDERED_ACCESS_VIEW_DESC headUAVDesc;
@@ -1882,54 +1843,37 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	DXCall(device->CreateUnorderedAccessView(this->visMap, &visMapUAVDesc,
 		&this->visMapUAV));
 
-	// COPY Vis Map
-	D3D11_TEXTURE2D_DESC visMapStagingDesc;
-	ZeroMemory(&visMapStagingDesc, sizeof(visMapStagingDesc));
-	visMapStagingDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	visMapStagingDesc.Format = DXGI_FORMAT_R32_SINT;
-	visMapStagingDesc.Height = viewport_height;	//TODO: should be context.height !!!
-	visMapStagingDesc.Width = viewport_width;	//TODO: should be context.width !!!
-	visMapStagingDesc.ArraySize = 1;
-	visMapStagingDesc.MipLevels = 1;
-	visMapStagingDesc.SampleDesc.Count = 1;
-	visMapStagingDesc.SampleDesc.Quality = 0;
-	visMapStagingDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&visMapStagingDesc, nullptr,
-		&this->visMapStaging));
-
-	// Update Vis map texture
-	int sizeVisMap = visMapStagingDesc.Width * visMapStagingDesc.Height;
-	std::vector<int> initVisMap(sizeVisMap, 1);
-	UINT SrcRowPitchVisMap = visMapStagingDesc.Width * sizeof(DXGI_FORMAT_R32_SINT);
-	UINT SrcDepthPitchVisMap = SrcRowPitchVisMap * visMapStagingDesc.Height;
-	context->UpdateSubresource(this->visMapStaging, 0, NULL, initVisMap.data(),
-		SrcRowPitchVisMap, SrcDepthPitchVisMap);
-	context->CopyResource(this->visMap, this->visMapStaging);
-
 	// Create the RW buffer that will contain the bounding box and the index in the
 	// vector for the rendering.
 	this->perTriangleBuffer.Initialize(device, DXGI_FORMAT_R32_UINT, sizeof(uint32),
-		(scene.Indices.NumElements / 3) * ptdElementCount);
+		(scene.Indices.NumElements / 3) * ptdElementCount * histElementCount);
+
+	// Remember the number of triangles in each bin.
+	this->histogramCount.Initialize(device, DXGI_FORMAT_R32_UINT, sizeof(uint32),
+		histElementCount);
 
     {
         // Get the description of the per triangle data buffer.
         D3D11_BUFFER_DESC desc;
-        this->perTriangleBuffer.Buffer->GetDesc(&desc);
-        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE |
-            D3D11_CPU_ACCESS_READ;
+		this->histogramCount.Buffer->GetDesc(&desc);
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
         // Create the staging buffer.
         DXCall(device->CreateBuffer(&desc, nullptr, &this->stagingBuffer));
         this->perTriangleBufferCpu.resize(
-            this->perTriangleBuffer.NumElements / 6);
+            this->perTriangleBuffer.NumElements / ptdElementCount);
     }
 
 	// Create the vector that will contain the SRVs and the vector that will create
 	// the UAVs.
 	this->srvs = { scene.Indices.SRView, this->vertexBufferSRV, this->worldPosSRV,
-		this->headSRV, this->tailSRV, this->perTriangleBuffer.SRView };
-	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+		this->headSRV, this->tailSRV, this->perTriangleBuffer.SRView,
+		this->histogramCount.SRView };
+	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr };
 	this->uavs = { this->worldPosUAV, this->headUAV, this->tailUAV };
-	this->uavsBB = { this->perTriangleBuffer.UAView };
+	this->uavsClear = { this->visMapUAV, this->headUAV, this->tailUAV };
+	this->uavsBB = { this->perTriangleBuffer.UAView, this->histogramCount.UAView };
 	this->uavsRendering = { this->visMapUAV };
 	this->uavsReset = { nullptr, nullptr, nullptr, };
 }
@@ -1940,6 +1884,10 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		DepthStencilBuffer& depthBuffer, const Camera& camera,
 		const Float4x4& meshWorld, const Float4x4& characterWorld) {
+	// Get the size of the tail texture and visMap.
+	D3D11_TEXTURE2D_DESC visMapDesc;
+	this->visMap->GetDesc(&visMapDesc);
+
 	// Constant Buffer Setup
 	this->computeShaderConstants.Data.viewInv =
 		Float4x4::Invert(camera.ViewMatrix());
@@ -1961,8 +1909,8 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 	this->computeShaderConstants.Data.texSize.w = 0;
 	this->computeShaderConstants.Data.headSize.x = headTextureWidth;
 	this->computeShaderConstants.Data.headSize.y = headTextureHeight;
-	this->computeShaderConstants.Data.headSize.z = 0;
-	this->computeShaderConstants.Data.headSize.w = 0;
+	this->computeShaderConstants.Data.headSize.z = visMapDesc.Width;
+	this->computeShaderConstants.Data.headSize.w = visMapDesc.Height;
 	this->computeShaderConstants.Data.vertexCount.x = scene.Indices.NumElements / 3;
 	this->computeShaderConstants.Data.vertexCount.y = 0;
 	this->computeShaderConstants.Data.vertexCount.z = 0;
@@ -1975,11 +1923,48 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 
 	// Reset textures to -1 / 1
 	{
-		ProfileBlock block(L"Reset Textures");
-		context->CopyResource(this->headTexture, headTextureStaging);
-		context->CopyResource(this->tailTexture, tailTextureStaging);
-		context->CopyResource(this->visMap, visMapStaging);
+		ProfileBlock block(L"Reset IZB");
+
+		//Setup for dispatch
+		SetCSShader(context, this->izbResetTexCS);
+		this->computeShaderConstants.SetCS(context, 1);
+		context->CSSetUnorderedAccessViews(0,
+			static_cast<UINT>(this->uavsClear.size()), this->uavsClear.data(),
+			nullptr);
+
+		// Dispatch the compute shader.
+		{
+			auto maxX = std::max(static_cast<UINT>(headTextureWidth),
+				visMapDesc.Width);
+			auto maxY = std::max(static_cast<UINT>(headTextureHeight),
+				visMapDesc.Height);
+			uint32 dispatchX = maxX / 16;
+			uint32 dispatchY = maxY / 16;
+			context->Dispatch(dispatchX, dispatchY, 1);
+		}
+
+		//Setup for dispatch
+		SetCSShader(context, this->izbResetBuffCS);
+		this->computeShaderConstants.SetCS(context, 1);
+		context->CSSetUnorderedAccessViews(0,
+			static_cast<UINT>(this->uavsBB.size()), this->uavsBB.data(), nullptr);
+
+		// Dispatch the compute shader.
+		{
+			uint32 dispatchX = this->computeShaderConstants.Data.vertexCount.x;
+			dispatchX = (dispatchX * histElementCount) / 64 + 1;
+			context->Dispatch(dispatchX, 1, 1);
+		}
+
+		// wait for compute shader
 		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+
+		// Cleanup
+		ClearCSInputs(context);
+		ClearCSOutputs(context);
+		context->CSSetUnorderedAccessViews(0,
+			static_cast<UINT>(this->uavsReset.size()), this->uavsReset.data(),
+			nullptr);
 	}
 
 	// Create the IZB.
@@ -1989,6 +1974,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		//Setup for dispatch
 		SetCSShader(context, this->izbCreationCS);
 		SetCSInputs(context, depthBuffer.SRView);
+		this->computeShaderConstants.SetCS(context, 1);
 		context->CSSetUnorderedAccessViews(0, static_cast<UINT>(this->uavs.size()),
 			this->uavs.data(), nullptr);
 
@@ -2009,8 +1995,9 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 	}
 
 	// Start the BoundingBox computataion.
+	std::array<uint32, histElementCount> counts = { 0,0,0,0,0,0 };
 	{
-		ProfileBlock block(L"Bounding Box computation");
+		ProfileBlock block(L"Histogram computation");
 
 		//Setup for dispatch
 		SetCSShader(context, this->boundingBoxCS);
@@ -2030,45 +2017,18 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		ClearCSInputs(context);
 		ClearCSOutputs(context);
 		context->CSSetShaderResources(0, 2u, this->srvsReset.data());
-		context->CSSetUnorderedAccessViews(0, 1u, this->uavsReset.data(), nullptr);
-	}
-
-	// Download, sort and upload the bounding boxes again.
-	std::array<size_t, histElementCount> counts = { 0,0,0,0,0,0 };
-	{
-		ProfileBlock block(L"Bounding Box sorting");
+		context->CSSetUnorderedAccessViews(0, 2u, this->uavsReset.data(), nullptr);
 
 		// Copy the per triangle data to the staging buffer.
-		context->CopyResource(this->stagingBuffer, this->perTriangleBuffer.Buffer);
+		context->CopyResource(this->stagingBuffer, this->histogramCount.Buffer);
 
-		// Download the per triangle data.
+		// Download the histogram count data.
 		D3D11_MAPPED_SUBRESOURCE subRes;
-		DXCall(context->Map(this->stagingBuffer, 0, D3D11_MAP_READ_WRITE, 0,
-			&subRes));
-		uint32* dataPtr = reinterpret_cast<uint32*>(
-			this->perTriangleBufferCpu.data());
-		::memcpy(dataPtr, subRes.pData, subRes.DepthPitch);
-
-		// Sort the buffer elements according to the bbox size index.
-		std::sort(this->perTriangleBufferCpu.begin(),
-			this->perTriangleBufferCpu.end(),
-			[](const PerTriangleData& lhs, const PerTriangleData& rhs) {
-				return lhs.index < rhs.index;
-			});
-
-		// Count the number of elements per bounding box size.
-		for (const auto element : this->perTriangleBufferCpu) {
-			counts[element.index]++;
-		}
-
-		// Upload the sorted data.
-		::memcpy(subRes.pData, dataPtr, subRes.DepthPitch);
+		DXCall(context->Map(this->stagingBuffer, 0, D3D11_MAP_READ, 0, &subRes));
+		::memcpy(counts.data(), subRes.pData, sizeof(uint32) * histElementCount);
 
 		// Unmap the staging buffer.
 		context->Unmap(this->stagingBuffer, 0);
-
-		// Copy the per triangle data to the buffer.
-		context->CopyResource(this->perTriangleBuffer.Buffer, this->stagingBuffer);
 	}
 
 	// Start IZBRendering Compute Shader
@@ -2085,12 +2045,9 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			this->uavsRendering.data(), nullptr);
 
 		// Dispatch the compute shaders.
-		for (size_t i = 0; i < counts.size(); ++i) {
-			// Update offsets into triangle buffer
-			if (i > 0) {
-				this->computeShaderConstants.Data.vertexCount.y += counts[i - 1];
-			}
-			this->computeShaderConstants.Data.vertexCount.z += counts[i];
+		for (size_t i = 0; i < histElementCount; ++i) {
+			// Update index of the histogram bin.
+			this->computeShaderConstants.Data.vertexCount.y = static_cast<uint>(i);
 
 			// Appy the changes and set the constants.
 			this->computeShaderConstants.ApplyChanges(context);
