@@ -27,7 +27,10 @@ static const float ShadowNearClip = 1.0f;
 static const bool UseComputeReduction = true;
 static const int headTextureWidth = 512;
 static const int headTextureHeight = 512;
-static const std::array<uint32, 5> bboxSizes = { 8,32,128,512,512*512 };
+static const size_t ptdElementCount = 6;
+static const size_t histElementCount = 6;
+static const std::array<uint32, histElementCount> bboxSizes = {
+	4,8,32,128,512,512*512 };
 
 // Finds the approximate smallest enclosing bounding sphere for a set of points. Based on
 // "An Efficient Bounding Sphere", by Jack Ritter.
@@ -1906,7 +1909,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	// Create the RW buffer that will contain the bounding box and the index in the
 	// vector for the rendering.
 	this->perTriangleBuffer.Initialize(device, DXGI_FORMAT_R32_UINT, sizeof(uint32),
-		(scene.Indices.NumElements / 3) * 6);
+		(scene.Indices.NumElements / 3) * ptdElementCount);
 
     {
         // Get the description of the per triangle data buffer.
@@ -2006,7 +2009,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 	}
 
 	// Start the BoundingBox computataion.
-	std::array<size_t, 5> counts = { 0,0,0,0,0 };
 	{
 		ProfileBlock block(L"Bounding Box computation");
 
@@ -2029,13 +2031,20 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		ClearCSOutputs(context);
 		context->CSSetShaderResources(0, 2u, this->srvsReset.data());
 		context->CSSetUnorderedAccessViews(0, 1u, this->uavsReset.data(), nullptr);
+	}
+
+	// Download, sort and upload the bounding boxes again.
+	std::array<size_t, histElementCount> counts = { 0,0,0,0,0,0 };
+	{
+		ProfileBlock block(L"Bounding Box sorting");
 
 		// Copy the per triangle data to the staging buffer.
 		context->CopyResource(this->stagingBuffer, this->perTriangleBuffer.Buffer);
 
 		// Download the per triangle data.
 		D3D11_MAPPED_SUBRESOURCE subRes;
-		DXCall(context->Map(this->stagingBuffer, 0, D3D11_MAP_READ_WRITE, 0, &subRes));
+		DXCall(context->Map(this->stagingBuffer, 0, D3D11_MAP_READ_WRITE, 0,
+			&subRes));
 		uint32* dataPtr = reinterpret_cast<uint32*>(
 			this->perTriangleBufferCpu.data());
 		::memcpy(dataPtr, subRes.pData, subRes.DepthPitch);
@@ -2075,7 +2084,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			static_cast<UINT>(this->uavsRendering.size()),
 			this->uavsRendering.data(), nullptr);
 
-#if 1
 		// Dispatch the compute shaders.
 		for (size_t i = 0; i < counts.size(); ++i) {
 			// Update offsets into triangle buffer
@@ -2093,21 +2101,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			uint32 dispatchY = bboxSizes[i] / 8 + 1;
 			context->Dispatch(dispatchX, dispatchY, 1);
 		}
-#else
-		// Update offsets into triangle buffer
-		this->computeShaderConstants.Data.vertexCount.y = 0;
-		this->computeShaderConstants.Data.vertexCount.z =
-			this->perTriangleBufferCpu.size();
-
-		// Appy the changes and set the constants.
-		this->computeShaderConstants.ApplyChanges(context);
-		this->computeShaderConstants.SetCS(context, 1);
-
-		// Dispatch the shader.
-		uint32 dispatchX = this->computeShaderConstants.Data.vertexCount.z / 64 + 1;
-		uint32 dispatchY = /*bboxSizes[4]*/1024 / 16 + 1;
-		context->Dispatch(dispatchX, dispatchY, 1);
-#endif
 
 		// wait for compute shader
 		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
