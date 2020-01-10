@@ -1903,7 +1903,19 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	// Create the RW buffer that will contain the bounding box and the index in the
 	// vector for the rendering.
 	this->perTriangleBuffer.Initialize(device, DXGI_FORMAT_R32_UINT, sizeof(uint32),
-		scene.Indices.NumElements / 3 * 6);
+		(scene.Indices.NumElements / 3) * 6);
+
+    {
+        // Get the description of the per triangle data buffer.
+        D3D11_BUFFER_DESC desc;
+        this->perTriangleBuffer.Buffer->GetDesc(&desc);
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE |
+            D3D11_CPU_ACCESS_READ;
+        // Create the staging buffer.
+        DXCall(device->CreateBuffer(&desc, nullptr, &this->stagingBuffer));
+        this->perTriangleBufferCpu.resize(
+            this->perTriangleBuffer.NumElements / 6);
+    }
 
 	// Create the vector that will contain the SRVs and the vector that will create
 	// the UAVs.
@@ -2014,20 +2026,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		ClearCSOutputs(context);
 		context->CSSetShaderResources(0, 2u, this->srvsReset.data());
 		context->CSSetUnorderedAccessViews(0, 1u, this->uavsReset.data(), nullptr);
-
-		// Download the per triangle data.
-		if (this->stagingBuffer == nullptr) {
-			// Get the description of the per triangle data buffer.
-			D3D11_BUFFER_DESC desc;
-			this->perTriangleBuffer.Buffer->GetDesc(&desc);
-			desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE |
-				D3D11_CPU_ACCESS_READ;
-
-			// Create the staging buffer.
-			DXCall(device->CreateBuffer(&desc, nullptr, &this->stagingBuffer));
-			this->perTriangleBufferCpu.resize(
-				this->perTriangleBuffer.NumElements / 6);
-		}
 
 		// Copy the per triangle data to the staging buffer.
 		context->CopyResource(this->stagingBuffer, this->perTriangleBuffer.Buffer);
