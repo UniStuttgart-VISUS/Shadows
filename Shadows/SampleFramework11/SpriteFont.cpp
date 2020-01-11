@@ -95,7 +95,7 @@ void SpriteFont::Initialize(LPCWSTR fontName, float fontSize, UINT fontStyle, bo
         GdiPlusCall(textGraphics.SetCompositingMode(CompositingModeSourceCopy));
 
         // Solid brush for text rendering
-        SolidBrush brush (Color(255, 255, 255, 255));
+        SolidBrush brush (Color(255, 255, 0, 255));
         GdiPlusCall(brush.GetLastStatus());
 
         // Draw all of the characters, and copy them to the full character set
