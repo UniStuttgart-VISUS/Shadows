@@ -24,6 +24,13 @@ cbuffer CSConstants : register(b1) {
 	float3 lightDir;
 };
 
+struct TailSample
+{
+    int next;
+    float3 ws_pos;
+};
+StructuredBuffer<TailSample> TailBuffer : register(t7);
+
 
 // ray-triangle based on the Möller–Trumbore  intersection algorithm
 bool RayIntersectsTriangle(const float3 rayOrigin, const float3 rayVector,
@@ -53,24 +60,6 @@ bool RayIntersectsTriangle(const float3 rayOrigin, const float3 rayVector,
 		}
 	}
 	return result;
-}
-
-
-// Hilfsfunktion Dreieckszahl
-uint f(uint w) {
-	return (w * (w + 1)) / 2;
-}
-
-// Hilfsfunktion untere Dreieckswurzel
-uint q(uint z) {
-	return floor((sqrt(8 * z + 1) - 1) / 2);
-}
-
-// calculates the inverse pairing function of an intger z to get x and y
-int2 inversePairingFunction(int z) {
-	int pi2 = z - f(q(z));
-	int pi1 = q(z) - pi2;
-	return int2(pi1, pi2);
 }
 
 [numthreads(64, 8, 1)]
@@ -127,14 +116,19 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 
 	// Get the initial value from the HEAD texture.
 	int value = HEAD[int2(xCoord, yCoord)];
+    
 
 	// Iterate over all the sample points in the izb list.
 	while (value != -1) {
 		// Get the sample point.
-		int2 samplePoint = inversePairingFunction(value);
+		int2 samplePoint = int2(value % texSize.x, floor(value / texSize.x) );
 	
 		// Load the world coordinates for the sample point.
-		float3 samplePoint_ws = WORLDPOS[samplePoint].xyz;
+		//float3 samplePoint_ws = WORLDPOS[samplePoint].xyz;
+
+        TailSample s = TailBuffer[value];
+        float3 samplePoint_ws = s.ws_pos;
+        value = s.next;
 	
 		// Adjust samplepoint to avoid self intersection.
 		float3 adjustedSamplePoint_ws = samplePoint_ws + 0.025f * lightDir;
@@ -148,6 +142,6 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 		}
 	
 		// Get next sample point from the TAIL texture.
-		value = TAIL[samplePoint];
+		//value = TAIL[samplePoint];
 	}
 }

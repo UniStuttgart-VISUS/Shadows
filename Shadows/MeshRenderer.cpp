@@ -25,8 +25,8 @@
 // Constants
 static const float ShadowNearClip = 1.0f;
 static const bool UseComputeReduction = true;
-static const int headTextureWidth = 512;
-static const int headTextureHeight = 512;
+static const int headTextureWidth = 2048;
+static const int headTextureHeight = 2048;
 static const size_t ptdElementCount = 6;
 static const size_t histElementCount = 6;
 static const std::array<uint32, histElementCount> bboxSizes = {
@@ -1788,6 +1788,9 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	DXCall(device->CreateShaderResourceView(this->tailTexture, &tailSRVDesc,
 		&this->tailSRV));
 
+    // Alternate use structured buffer for tail
+    tail_buffer.Initialize(device, sizeof(Float4), viewport_height * viewport_width, true);
+
 	// QUERY
 	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
 	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
@@ -1868,10 +1871,10 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	// the UAVs.
 	this->srvs = { scene.Indices.SRView, this->vertexBufferSRV, this->worldPosSRV,
 		this->headSRV, this->tailSRV, this->perTriangleBuffer.SRView,
-		this->histogramCount.SRView };
+		this->histogramCount.SRView, this->tail_buffer.SRView };
 	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 		nullptr };
-	this->uavs = { this->worldPosUAV, this->headUAV, this->tailUAV };
+	this->uavs = { this->worldPosUAV, this->headUAV, this->tailUAV, this->tail_buffer.UAView };
 	this->uavsClear = { this->visMapUAV, this->headUAV, this->tailUAV };
 	this->uavsBB = { this->perTriangleBuffer.UAView, this->histogramCount.UAView };
 	this->uavsRendering = { this->visMapUAV };

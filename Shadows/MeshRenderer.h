@@ -322,4 +322,6 @@ protected:
 	RWBuffer histogramCount;
 	ID3D11BufferPtr stagingBuffer;
 	std::vector<PerTriangleData> perTriangleBufferCpu;
+
+    StructuredBuffer tail_buffer;
 };

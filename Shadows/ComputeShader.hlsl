@@ -26,31 +26,12 @@ RWTexture2D<float4> Output : register(u0);
 RWTexture2D<int> HEAD : register(u1);
 RWTexture2D<int> TAIL : register(u2);
 
-// Hilfsfunktion Dreieckszahl
-uint f(uint w)
+struct TailSample
 {
-    return (w * (w + 1)) / 2;
-}
-
-// Hilfsfunktion untere Dreieckswurzel
-uint q(uint z)
-{
-    return floor((sqrt(8 * z + 1) - 1) / 2);
-}
-
-// returns a single, unique value given two integer values x and y
-int pairingFunction(int2 tuple)
-{
-    return tuple.y + 0.5 * (tuple.x + tuple.y) * (tuple.x + tuple.y + 1);
-}
-
-// calculates the inverse pairing function of an intger z to get x and y
-int2 inversePairingFunction(int z)
-{
-    int pi2 = z - f(q(z));
-    int pi1 = q(z) - pi2;
-    return int2(pi1, pi2);
-}
+    int next;
+    float3 ws_pos;
+};
+RWStructuredBuffer<TailSample> TailBuffer : register(u3);
 
 [numthreads(16, 16, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
@@ -102,18 +83,20 @@ void main(uint3 DTid : SV_DispatchThreadID)
     int v = floor(v_f);
     
 	// map x and y to a single, unique integer z
-    int z = pairingFunction(DTid.xy);
+    int linear_idx = DTid.x + DTid.y * texSize.x;
 	
     // NEW IZB with paired values
 	int lastID = -2;
     
 	//write index to head 
-	InterlockedExchange(HEAD[int2(u, v)], z, lastID);
+	InterlockedExchange(HEAD[int2(u, v)], linear_idx, lastID);
 	
 	//save last index in tail 
 	TAIL[int2(DTid.xy)] = lastID;
     
-
+    // compute linear tail pixel index
+    TailBuffer[linear_idx].next = lastID;
+    TailBuffer[linear_idx].ws_pos = worldSpacePosition.xyz;
   
 }
     
