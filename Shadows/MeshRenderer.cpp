@@ -1869,16 +1869,19 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 
 	// Create the vector that will contain the SRVs and the vector that will create
 	// the UAVs.
-	this->srvs = { scene.Indices.SRView, this->vertexBufferSRV, this->worldPosSRV,
-		this->headSRV, this->tailSRV, this->perTriangleBuffer.SRView,
-		this->histogramCount.SRView, this->tail_buffer.SRView };
-	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-		nullptr };
-	this->uavs = { this->worldPosUAV, this->headUAV, this->tailUAV, this->tail_buffer.UAView };
+	this->srvsHistComp = { scene.Indices.SRView, this->vertexBufferSRV,
+		this->headSRV };
+	this->srvsRendering = { scene.Indices.SRView, this->vertexBufferSRV,
+		this->headSRV, this->perTriangleBuffer.SRView, this->histogramCount.SRView,
+		this->tail_buffer.SRView };
+	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+	this->uavsCreation = { this->worldPosUAV, this->headUAV, this->tailUAV,
+		this->tail_buffer.UAView };
 	this->uavsClear = { this->visMapUAV, this->headUAV, this->tailUAV };
-	this->uavsBB = { this->perTriangleBuffer.UAView, this->histogramCount.UAView };
+	this->uavsHistComp = { this->perTriangleBuffer.UAView,
+		this->histogramCount.UAView };
 	this->uavsRendering = { this->visMapUAV };
-	this->uavsReset = { nullptr, nullptr, nullptr, };
+	this->uavsReset = { nullptr, nullptr, nullptr, nullptr };
 }
 
 /*
@@ -1950,7 +1953,8 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		SetCSShader(context, this->izbResetBuffCS);
 		this->computeShaderConstants.SetCS(context, 1);
 		context->CSSetUnorderedAccessViews(0,
-			static_cast<UINT>(this->uavsBB.size()), this->uavsBB.data(), nullptr);
+			static_cast<UINT>(this->uavsHistComp.size()), this->uavsHistComp.data(),
+			nullptr);
 
 		// Dispatch the compute shader.
 		{
@@ -1966,7 +1970,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		ClearCSInputs(context);
 		ClearCSOutputs(context);
 		context->CSSetUnorderedAccessViews(0,
-			static_cast<UINT>(this->uavsReset.size()), this->uavsReset.data(),
+			static_cast<UINT>(this->uavsHistComp.size()), this->uavsReset.data(),
 			nullptr);
 	}
 
@@ -1978,8 +1982,9 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		SetCSShader(context, this->izbCreationCS);
 		SetCSInputs(context, depthBuffer.SRView);
 		this->computeShaderConstants.SetCS(context, 1);
-		context->CSSetUnorderedAccessViews(0, static_cast<UINT>(this->uavs.size()),
-			this->uavs.data(), nullptr);
+		context->CSSetUnorderedAccessViews(0,
+			static_cast<UINT>(this->uavsCreation.size()),
+			this->uavsCreation.data(), nullptr);
 
 		// Dispatch the compute shader.
 		uint32 dispatchX = depthBuffer.Width / 16;
@@ -1993,7 +1998,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		ClearCSInputs(context);
 		ClearCSOutputs(context);
 		context->CSSetUnorderedAccessViews(0,
-			static_cast<UINT>(this->uavsReset.size()), this->uavsReset.data(),
+			static_cast<UINT>(this->uavsCreation.size()), this->uavsReset.data(),
 			nullptr);
 	}
 
@@ -2005,9 +2010,12 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		//Setup for dispatch
 		SetCSShader(context, this->boundingBoxCS);
 		this->computeShaderConstants.SetCS(context, 1);
-		context->CSSetShaderResources(0, 2u, this->srvs.data());
+		context->CSSetShaderResources(0,
+			static_cast<uint>(this->srvsHistComp.size()),
+			this->srvsHistComp.data());
 		context->CSSetUnorderedAccessViews(0,
-			static_cast<UINT>(this->uavsBB.size()), this->uavsBB.data(), nullptr);
+			static_cast<UINT>(this->uavsHistComp.size()),
+			this->uavsHistComp.data(), nullptr);
 
 		// Dispatch the compute shader.
 		uint32 dispatchX = this->computeShaderConstants.Data.vertexCount.x / 64 + 1;
@@ -2019,8 +2027,11 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		// Cleanup
 		ClearCSInputs(context);
 		ClearCSOutputs(context);
-		context->CSSetShaderResources(0, 2u, this->srvsReset.data());
-		context->CSSetUnorderedAccessViews(0, 2u, this->uavsReset.data(), nullptr);
+		context->CSSetShaderResources(0,
+			static_cast<uint>(this->srvsHistComp.size()), this->srvsReset.data());
+		context->CSSetUnorderedAccessViews(0,
+			static_cast<UINT>(this->uavsHistComp.size()), this->uavsReset.data(),
+			nullptr);
 
 		// Copy the per triangle data to the staging buffer.
 		context->CopyResource(this->stagingBuffer, this->histogramCount.Buffer);
@@ -2041,8 +2052,9 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		//Setup for dispatch
 		SetCSShader(context, this->izbRenderingCS);
 		this->computeShaderConstants.SetCS(context, 1);
-		context->CSSetShaderResources(0, static_cast<UINT>(this->srvs.size()),
-			this->srvs.data());
+		context->CSSetShaderResources(0,
+			static_cast<UINT>(this->srvsRendering.size()),
+			this->srvsRendering.data());
 		context->CSSetUnorderedAccessViews(0,
 			static_cast<UINT>(this->uavsRendering.size()),
 			this->uavsRendering.data(), nullptr);
@@ -2068,9 +2080,11 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		// Cleanup
 		ClearCSInputs(context);
 		ClearCSOutputs(context);
-		context->CSSetShaderResources(0, static_cast<UINT>(this->srvsReset.size()),
-			this->srvsReset.data());
-		context->CSSetUnorderedAccessViews(0, 1, this->uavsReset.data(), nullptr);
+		context->CSSetShaderResources(0,
+			static_cast<UINT>(this->srvsRendering.size()), this->srvsReset.data());
+		context->CSSetUnorderedAccessViews(0,
+			static_cast<UINT>(this->uavsRendering.size()), this->uavsReset.data(),
+			nullptr);
 	}
 
 	// Select the return value.

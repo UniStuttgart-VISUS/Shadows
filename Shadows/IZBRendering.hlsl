@@ -3,12 +3,17 @@
 
 StructuredBuffer<uint> Indices : register(t0);
 Buffer<float3> Vertices : register(t1);
-Texture2D<float4> WORLDPOS : register(t2);
-Texture2D<int> HEAD : register(t3);
-Texture2D<int> TAIL : register(t4);
-Buffer<uint> BBoxData : register(t5);
-Buffer<uint> InputHist : register(t6);
+Texture2D<int> HEAD : register(t2);
+Buffer<uint> BBoxData : register(t3);
+Buffer<uint> InputHist : register(t4);
 RWTexture2D<int> VISMASK : register(u0);
+
+struct TailSample
+{
+    int next;
+    float3 ws_pos;
+};
+StructuredBuffer<TailSample> TailBuffer : register(t5);
 
 
 cbuffer CSConstants : register(b1) {
@@ -23,13 +28,6 @@ cbuffer CSConstants : register(b1) {
 	uint4 vertexCount;
 	float3 lightDir;
 };
-
-struct TailSample
-{
-    int next;
-    float3 ws_pos;
-};
-StructuredBuffer<TailSample> TailBuffer : register(t7);
 
 
 // ray-triangle based on the Möller–Trumbore  intersection algorithm
@@ -116,16 +114,13 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 
 	// Get the initial value from the HEAD texture.
 	int value = HEAD[int2(xCoord, yCoord)];
-    
 
 	// Iterate over all the sample points in the izb list.
 	while (value != -1) {
 		// Get the sample point.
 		int2 samplePoint = int2(value % texSize.x, floor(value / texSize.x) );
 	
-		// Load the world coordinates for the sample point.
-		//float3 samplePoint_ws = WORLDPOS[samplePoint].xyz;
-
+		// Get next sample point from the TAIL texture.
         TailSample s = TailBuffer[value];
         float3 samplePoint_ws = s.ws_pos;
         value = s.next;
@@ -140,8 +135,5 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 			// The sample point is shadowed.
 			VISMASK[samplePoint] = 0;
 		}
-	
-		// Get next sample point from the TAIL texture.
-		//value = TAIL[samplePoint];
 	}
 }

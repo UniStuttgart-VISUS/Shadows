@@ -3,6 +3,7 @@
 
 StructuredBuffer<uint> Indices : register(t0);
 Buffer<float3> Vertices : register(t1);
+Texture2D<int> HEAD : register(t2);
 RWBuffer<uint> OutputBBox : register(u0);
 RWBuffer<uint> OutputHist : register(u1);
 
@@ -82,10 +83,25 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	int maxX = ceil(max(v0_u, max(v1_u, v2_u)));
 	int maxY = ceil(max(v0_v, max(v1_v, v2_v)));
 
+	// Make sure the size is positive or at least zero.
     minX = max(0, minX);
     minY = max(0, minY);
     maxX = min(headSize.x, maxX);
     maxY = min(headSize.y, maxY);
+
+	// Check if the head texture has at least one value that is not -1.
+	int2 counts = int2(0, 0);
+	for (int i = minX; i <= maxX; ++i) {
+		for (int j = minY; j <= maxY; ++j) {
+			if (HEAD[int2(i, j)] == -1) {
+				counts.x++;
+			}
+			counts.y++;
+		}
+	}
+	if (counts.x == counts.y) {
+		return;
+	}
 
 	// Compute the index.
 	uint index = 0;
@@ -108,7 +124,6 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	InterlockedAdd(OutputHist[index], 1, oldVal);
 
 	// Save the output to the buffer.
-	//int idx = DTid.x * 6;
 	int idx = (index * (vertexCount.x * 6)) + (oldVal * 6);
 	OutputBBox[idx + 0] = uint(minX);
 	OutputBBox[idx + 1] = uint(minY);
@@ -117,5 +132,3 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	OutputBBox[idx + 4] = index;
 	OutputBBox[idx + 5] = DTid.x;
 }
-
-

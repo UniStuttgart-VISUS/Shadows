@@ -305,11 +305,12 @@ protected:
 
 	ID3D11Query* queryObj;
 	D3D11_QUERY_DESC queryDesc;
-	std::vector<ID3D11ShaderResourceView*> srvs;
+	std::vector<ID3D11ShaderResourceView*> srvsHistComp;
+	std::vector<ID3D11ShaderResourceView*> srvsRendering;
 	std::vector<ID3D11ShaderResourceView*> srvsReset;
-	std::vector<ID3D11UnorderedAccessView*> uavs;
 	std::vector<ID3D11UnorderedAccessView*> uavsClear;
-	std::vector<ID3D11UnorderedAccessView*> uavsBB;
+	std::vector<ID3D11UnorderedAccessView*> uavsCreation;
+	std::vector<ID3D11UnorderedAccessView*> uavsHistComp;
 	std::vector<ID3D11UnorderedAccessView*> uavsRendering;
 	std::vector<ID3D11UnorderedAccessView*> uavsReset;
 
