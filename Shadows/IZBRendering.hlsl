@@ -60,7 +60,7 @@ bool RayIntersectsTriangle(const float3 rayOrigin, const float3 rayVector,
 	return result;
 }
 
-[numthreads(64, 8, 1)]
+[numthreads(64, 4, 1)]
 void main(uint3 DTid : SV_DispatchThreadID) {
 	// Skip unnecessary threads...
 	uint id = DTid.x;

@@ -80,7 +80,7 @@ dcl_resource_structured t5, 16
 dcl_uav_typed_texture2d (sint,sint,sint,sint) u0
 dcl_input vThreadID.xy
 dcl_temps 7
-dcl_thread_group 64, 8, 1
+dcl_thread_group 64, 4, 1
 ld_indexable(buffer)(uint,uint,uint,uint) r0.x, cb1[23].yyyy, t4.xyzw
 uge r0.x, vThreadID.x, r0.x
 if_nz r0.x
@@ -182,10 +182,10 @@ ret
 
 const BYTE IZBRenderingByteCode[] =
 {
-     68,  88,  66,  67,  11, 171, 
-    190, 244, 121, 206, 227, 130, 
-    234,   9,  84, 207, 129,  55, 
-    130, 166,   1,   0,   0,   0, 
+     68,  88,  66,  67, 195,  12, 
+    211,  55,  93, 246,  70, 144, 
+    229, 104, 250,  40, 188, 176, 
+    121,  45,   1,   0,   0,   0, 
     244,  17,   0,   0,   5,   0, 
       0,   0,  52,   0,   0,   0, 
     252,   5,   0,   0,  12,   6, 
@@ -471,7 +471,7 @@ const BYTE IZBRenderingByteCode[] =
      50,   0,   2,   0, 104,   0, 
       0,   2,   7,   0,   0,   0, 
     155,   0,   0,   4,  64,   0, 
-      0,   0,   8,   0,   0,   0, 
+      0,   0,   4,   0,   0,   0, 
       1,   0,   0,   0,  45,   0, 
       0, 138,  66,   0,   0, 128, 
       3,  17,  17,   0,  18,   0, 

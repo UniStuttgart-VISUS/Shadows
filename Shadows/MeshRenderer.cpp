@@ -2070,7 +2070,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 
 			// Dispatch the shader.
 			uint32 dispatchX = counts[i] / 64 + 1;
-			uint32 dispatchY = bboxSizes[i] / 8 + 1;
+			uint32 dispatchY = bboxSizes[i] / 4 + 1;
 			context->Dispatch(dispatchX, dispatchY, 1);
 		}
 

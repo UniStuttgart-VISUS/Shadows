@@ -41,18 +41,6 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	float4 v1_ws = mul(float4(v1, 1.0f), meshWorld).xyzw;
 	float4 v2_ws = mul(float4(v2, 1.0f), meshWorld).xyzw;
 
-	// Face culling.
-	// TODO: does not work 100%...
-	float3 camPos = float3(viewInv[0][3], viewInv[1][3], viewInv[2][3]);
-	float3 edge1 = v1_ws.xyz - v0_ws.xyz;
-	float3 edge2 = v2_ws.xyz - v0_ws.xyz;
-	float3 normal = normalize(cross(edge1, edge2));
-	float3 viewDir = normalize(v0_ws.xyz - camPos);
-	float result = dot(normal, viewDir);
-	if (result <= 0.0) {
-		//return;
-	}
-
 	// Transformation to Light Space via orthographic projection
 	float4 v0_ls = mul(viewProj, v0_ws);
 	float4 v1_ls = mul(viewProj, v1_ws);
