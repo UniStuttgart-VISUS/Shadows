@@ -3,8 +3,7 @@
 
 RWTexture2D<int> VISMASK : register(u0);
 RWTexture2D<int> HEAD : register(u1);
-RWTexture2D<int> TAIL : register(u2);
-RWBuffer<uint> OutputHist : register(u3);
+RWBuffer<uint> OutputHist : register(u2);
 
 cbuffer CSConstants : register(b1) {
 	float4x4 viewInv;
@@ -29,7 +28,6 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	// Reset the vismask and tail texture.
 	if (all(DTid.xy < headSize.zw)) {
 		VISMASK[int2(DTid.xy)] = 1;
-		TAIL[int2(DTid.xy)] = -1;
 	}
 
 	// Reset the histogram bin count.

@@ -4,7 +4,13 @@
 StructuredBuffer<uint> Indices : register(t0);
 Buffer<float3> Vertices : register(t1);
 Texture2D<int> HEAD : register(t2);
-Buffer<uint> BBoxData : register(t3);
+
+struct BBoxSample {
+	uint4 bbox;
+	uint4 indices;
+};
+StructuredBuffer<BBoxSample> BBoxData : register(t3);
+
 Buffer<uint> InputHist : register(t4);
 
 struct TailSample {
@@ -83,12 +89,16 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 		return;
 	}
 
-	// Get the triangles.
-	id = vertexCount.y * (vertexCount.x * 5) + (id * 5);
-	uint tIdx = BBoxData[id + 4];
-	float3 v0 = Vertices.Load(Indices.Load(tIdx * 3));
+	// Get the bounding box data for the current triangle.
+	id = (vertexCount.y * vertexCount.x) + id;
+	BBoxSample bboxSample = BBoxData[id];
+	uint4 bbox = bboxSample.bbox;
 
-	// Transformation to world space
+	// Get the triangle index.
+	uint tIdx = bboxSample.indices.x;
+
+	// Get one corner of the triangle and transform it to world space.
+	float3 v0 = Vertices.Load(Indices.Load(tIdx * 3));
 	float4 v0_ws = mul(float4(v0, 1.0f), meshWorld).xyzw;
 
 	// Get the precomputed values for the Ray -> Triangle intersection.
@@ -105,18 +115,15 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	}
 
 	// Get bounding box corner values.
-	uint minX = BBoxData[id + 0];
-	uint minY = BBoxData[id + 1];
-	uint maxX = BBoxData[id + 2];
-	uint maxY = BBoxData[id + 3];
-	uint diffX = (maxX - minX) + 1;
+	uint2 maxBbox = uint2(bbox.z, bbox.w);
+	uint diffX = (bbox.z - bbox.x) + 1;
 
 	// Get the coordinates in the bounding box.
-	uint xCoord = minX + (DTid.y % diffX);
-	uint yCoord = minY + (DTid.y / diffX);
+	uint xCoord = bbox.x + (DTid.y % diffX);
+	uint yCoord = bbox.y + (DTid.y / diffX);
 
 	// Skip unnecessary threads...
-	if (any(uint2(xCoord, yCoord) > uint2(maxX, maxY))) {
+	if (any(uint2(xCoord, yCoord) > maxBbox)) {
 		return;
 	}
 

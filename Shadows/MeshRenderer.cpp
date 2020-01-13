@@ -1748,21 +1748,6 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	headTextureDesc.Usage = D3D11_USAGE_DEFAULT;
 	DXCall(device->CreateTexture2D(&headTextureDesc, nullptr, &this->headTexture));
 
-	// TAIL
-	D3D11_TEXTURE2D_DESC tailTextureDesc;
-	ZeroMemory(&tailTextureDesc, sizeof(tailTextureDesc));
-	tailTextureDesc.BindFlags =
-		D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	tailTextureDesc.Format = DXGI_FORMAT_R32_SINT;
-	tailTextureDesc.Height = viewport_height;	//TODO: should be context.height !!!
-	tailTextureDesc.Width = viewport_width;	//TODO: should be context.width !!!
-	tailTextureDesc.ArraySize = 1;
-	tailTextureDesc.MipLevels = 1;
-	tailTextureDesc.SampleDesc.Count = 1;
-	tailTextureDesc.SampleDesc.Quality = 0;
-	tailTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&tailTextureDesc, nullptr, &this->tailTexture));
-
 	// create UAV for head 
 	D3D11_UNORDERED_ACCESS_VIEW_DESC headUAVDesc;
 	ZeroMemory(&headUAVDesc, sizeof(headUAVDesc));
@@ -1781,26 +1766,8 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	DXCall(device->CreateShaderResourceView(this->headTexture, &headSRVDesc,
 		&this->headSRV));
 
-	// create UAV for tail
-	D3D11_UNORDERED_ACCESS_VIEW_DESC tailUAVDesc;
-	ZeroMemory(&tailUAVDesc, sizeof(tailUAVDesc));
-	tailUAVDesc.Format = DXGI_FORMAT_R32_SINT;
-	tailUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	DXCall(device->CreateUnorderedAccessView(this->tailTexture, &tailUAVDesc,
-		&this->tailUAV));
-
-	// create SRV for tail
-	CD3D11_SHADER_RESOURCE_VIEW_DESC tailSRVDesc;
-	ZeroMemory(&tailSRVDesc, sizeof(tailSRVDesc));
-	tailSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	tailSRVDesc.Format = DXGI_FORMAT_R32_SINT;
-	tailSRVDesc.Texture2D.MipLevels = 1;
-	tailSRVDesc.Texture2D.MostDetailedMip = 0;
-	DXCall(device->CreateShaderResourceView(this->tailTexture, &tailSRVDesc,
-		&this->tailSRV));
-
     // Alternate use structured buffer for tail
-	this->tailBuffer.Initialize(device, sizeof(Float4),
+	this->tailBuffer.Initialize(device, sizeof(Float3) + sizeof(uint32),
 		viewport_height * viewport_width, true);
 
 	// QUERY
@@ -1860,8 +1827,8 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 
 	// Create the RW buffer that will contain the bounding box and the index in the
 	// vector for the rendering.
-	this->perTriangleBuffer.Initialize(device, DXGI_FORMAT_R32_UINT, sizeof(uint32),
-		((scene.Indices.NumElements / 3) * ptdElementCount) * histElementCount);
+	this->perTriangleBuffer.Initialize(device, sizeof(Uint4) * 2,
+		(scene.Indices.NumElements / 3) * histElementCount, true);
 
 	// Remember the number of triangles in each bin.
 	this->histogramCount.Initialize(device, DXGI_FORMAT_R32_UINT, sizeof(uint32),
@@ -1891,9 +1858,9 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 		this->tailBuffer.SRView, this->triangleIntersect.SRView };
 	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 		nullptr};
-	this->uavsCreation = { this->worldPosUAV, this->headUAV, this->tailUAV,
+	this->uavsCreation = { this->worldPosUAV, this->headUAV,
 		this->tailBuffer.UAView };
-	this->uavsClear = { this->visMapUAV, this->headUAV, this->tailUAV,
+	this->uavsClear = { this->visMapUAV, this->headUAV,
 		this->histogramCount.UAView };
 	this->uavsInterPre = { this->triangleIntersect.UAView };
 	this->uavsHistComp = { this->perTriangleBuffer.UAView,
@@ -2155,8 +2122,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 	// Select the return value.
 	if (AppSettings::DebugMode == DebugMode::Head) {
 		return this->headTexture;
-	} else if (AppSettings::DebugMode == DebugMode::Tail) {
-		return this->tailTexture;
 	} else if (AppSettings::DebugMode == DebugMode::ComputeShader) {
 		return this->worldPosTexture;
 	} else if (AppSettings::DebugMode == DebugMode::VisibilityMask) {

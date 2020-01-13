@@ -4,7 +4,12 @@
 StructuredBuffer<uint> Indices : register(t0);
 Buffer<float3> Vertices : register(t1);
 Texture2D<int> HEAD : register(t2);
-RWBuffer<uint> OutputBBox : register(u0);
+
+struct BBoxSample {
+	uint4 bbox;
+	uint4 indices;
+};
+RWStructuredBuffer<BBoxSample> OutputBBox : register(u0);
 RWBuffer<uint> OutputHist : register(u1);
 
 
@@ -100,10 +105,7 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	InterlockedAdd(OutputHist[index], 1, oldVal);
 
 	// Save the output to the buffer.
-	int idx = (index * (vertexCount.x * 5)) + (oldVal * 5);
-	OutputBBox[idx + 0] = uint(minX);
-	OutputBBox[idx + 1] = uint(minY);
-	OutputBBox[idx + 2] = uint(maxX);
-	OutputBBox[idx + 3] = uint(maxY);
-	OutputBBox[idx + 4] = DTid.x;
+	int idx = (index * vertexCount.x) + oldVal;
+	OutputBBox[idx].bbox = uint4(minX, minY, maxX, maxY);
+	OutputBBox[idx].indices = uint4(DTid.x, 0, 0, 0);
 }

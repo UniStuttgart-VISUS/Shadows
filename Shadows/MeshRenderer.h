@@ -273,19 +273,16 @@ protected:
 
 	ID3D11UnorderedAccessView* worldPosUAV;
 	ID3D11UnorderedAccessView* headUAV;
-	ID3D11UnorderedAccessView* tailUAV;
 	ID3D11UnorderedAccessView* verticesUAV;
 	ID3D11UnorderedAccessView* visMapUAV;
 
 	ID3D11ShaderResourceView* vertexBufferSRV;
 	ID3D11ShaderResourceView* worldPosSRV;
 	ID3D11ShaderResourceView* headSRV;
-	ID3D11ShaderResourceView* tailSRV;
 
 
 	ID3D11Texture2D* worldPosTexture;
 	ID3D11Texture2D* headTexture;
-	ID3D11Texture2D* tailTexture;
 	ID3D11Texture2D* visMap;
 
 
@@ -310,7 +307,7 @@ protected:
 	ID3D11ComputeShader* izbRenderingCS;
 	ID3D11ComputeShader* izbRenderingBigCS;
 	ID3D11ComputeShader* izbResetCS;
-	RWBuffer perTriangleBuffer;
+	StructuredBuffer perTriangleBuffer;
 	RWBuffer histogramCount;
 	ID3D11BufferPtr stagingBuffer;
 	StructuredBuffer triangleIntersect;
