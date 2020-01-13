@@ -1685,15 +1685,10 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	DXCall(device->CreateComputeShader(::IZBRenderingBigByteCode,
 		sizeof(::IZBRenderingBigByteCode), nullptr, &this->izbRenderingBigCS));
 
-	// Compute Shader (IZB Buffer reset).
-	this->izbResetBuffCS = nullptr;
-	DXCall(device->CreateComputeShader(::IZBResetBuffersByteCode,
-		sizeof(::IZBResetBuffersByteCode), nullptr, &this->izbResetBuffCS));
-
-	// Compute Shader (IZB Texutre reset).
-	this->izbResetTexCS = nullptr;
+	// Compute Shader (IZB Texutre and histogram reset).
+	this->izbResetCS = nullptr;
 	DXCall(device->CreateComputeShader(::IZBResetTexturesByteCode,
-		sizeof(::IZBResetTexturesByteCode), nullptr, &this->izbResetTexCS));
+		sizeof(::IZBResetTexturesByteCode), nullptr, &this->izbResetCS));
 
     uint viewport_width = backbuffer_width;
     uint viewport_height = backbuffer_height;
@@ -1886,7 +1881,8 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
 	this->uavsCreation = { this->worldPosUAV, this->headUAV, this->tailUAV,
 		this->tail_buffer.UAView };
-	this->uavsClear = { this->visMapUAV, this->headUAV, this->tailUAV };
+	this->uavsClear = { this->visMapUAV, this->headUAV, this->tailUAV,
+		this->histogramCount.UAView };
 	this->uavsHistComp = { this->perTriangleBuffer.UAView,
 		this->histogramCount.UAView };
 	this->uavsRendering = { this->visMapUAV };
@@ -1941,7 +1937,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		ProfileBlock block(L"Reset IZB");
 
 		//Setup for dispatch
-		SetCSShader(context, this->izbResetTexCS);
+		SetCSShader(context, this->izbResetCS);
 		this->computeShaderConstants.SetCS(context, 1);
 		context->CSSetUnorderedAccessViews(0,
 			static_cast<UINT>(this->uavsClear.size()), this->uavsClear.data(),
@@ -1958,20 +1954,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			context->Dispatch(dispatchX, dispatchY, 1);
 		}
 
-		//Setup for dispatch
-		SetCSShader(context, this->izbResetBuffCS);
-		this->computeShaderConstants.SetCS(context, 1);
-		context->CSSetUnorderedAccessViews(0,
-			static_cast<UINT>(this->uavsHistComp.size()), this->uavsHistComp.data(),
-			nullptr);
-
-		// Dispatch the compute shader.
-		{
-			uint32 dispatchX = this->computeShaderConstants.Data.vertexCount.x;
-			dispatchX = (dispatchX * histElementCount) / 64 + 1;
-			context->Dispatch(dispatchX, 1, 1);
-		}
-
 		// wait for compute shader
 		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
 
@@ -1979,7 +1961,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		ClearCSInputs(context);
 		ClearCSOutputs(context);
 		context->CSSetUnorderedAccessViews(0,
-			static_cast<UINT>(this->uavsHistComp.size()), this->uavsReset.data(),
+			static_cast<UINT>(this->uavsClear.size()), this->uavsReset.data(),
 			nullptr);
 	}
 
@@ -2012,7 +1994,8 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 	}
 
 	// Start the BoundingBox computataion.
-	std::array<uint32, histElementCount> counts = { 0,0,0,0,0,0,0 };
+	std::array<uint32, histElementCount> counts;
+	counts.fill(0u);
 	{
 		ProfileBlock block(L"Histogram computation");
 
