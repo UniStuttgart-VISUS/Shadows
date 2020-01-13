@@ -2029,6 +2029,9 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		// wait for compute shader
 		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
 
+		// Copy the per triangle data to the staging buffer.
+		context->CopyResource(this->stagingBuffer, this->histogramCount.Buffer);
+
 		// Cleanup
 		ClearCSInputs(context);
 		ClearCSOutputs(context);
@@ -2037,9 +2040,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		context->CSSetUnorderedAccessViews(0,
 			static_cast<UINT>(this->uavsHistComp.size()), this->uavsReset.data(),
 			nullptr);
-
-		// Copy the per triangle data to the staging buffer.
-		context->CopyResource(this->stagingBuffer, this->histogramCount.Buffer);
 	}
 
 	{

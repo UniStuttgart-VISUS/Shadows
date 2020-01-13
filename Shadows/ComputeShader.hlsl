@@ -27,8 +27,8 @@ RWTexture2D<int> HEAD : register(u1);
 RWTexture2D<int> TAIL : register(u2);
 
 struct TailSample {
+	float3 ws_pos;
     int next;
-    float3 ws_pos;
 };
 RWStructuredBuffer<TailSample> TailBuffer : register(u3);
 
@@ -94,9 +94,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	TAIL[int2(DTid.xy)] = lastID;
     
     // compute linear tail pixel index
+	TailBuffer[linear_idx].ws_pos = worldSpacePosition.xyz;
     TailBuffer[linear_idx].next = lastID;
-    TailBuffer[linear_idx].ws_pos = worldSpacePosition.xyz;
-  
 }
     
     
