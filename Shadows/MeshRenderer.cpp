@@ -36,7 +36,7 @@ static const std::array<uint32, histElementCount> bboxSizes = {
 	64,
 	512,
 	8192,
-	(static_cast<uint32>(headTextureWidth) * static_cast<uint32>(headTextureHeight)) / 2 };
+	((static_cast<uint32>(headTextureWidth) * static_cast<uint32>(headTextureHeight)) / 2) + 2896};
 
 // Finds the approximate smallest enclosing bounding sphere for a set of points. Based on
 // "An Efficient Bounding Sphere", by Jack Ritter.
@@ -2094,7 +2094,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			this->uavsRendering.data(), nullptr);
 
 		// Dispatch the compute shaders.
-		for (size_t i = 2; i < 6/*histElementCount*/; ++i) {
+		for (size_t i = 2; i < histElementCount; ++i) {
 			// Update index of the histogram bin.
 			this->computeShaderConstants.Data.vertexCount.y = static_cast<uint>(i);
 
