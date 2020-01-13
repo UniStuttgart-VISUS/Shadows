@@ -112,11 +112,10 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	InterlockedAdd(OutputHist[index], 1, oldVal);
 
 	// Save the output to the buffer.
-	int idx = (index * (vertexCount.x * 6)) + (oldVal * 6);
+	int idx = (index * (vertexCount.x * 5)) + (oldVal * 5);
 	OutputBBox[idx + 0] = uint(minX);
 	OutputBBox[idx + 1] = uint(minY);
 	OutputBBox[idx + 2] = uint(maxX);
 	OutputBBox[idx + 3] = uint(maxY);
-	OutputBBox[idx + 4] = index;
-	OutputBBox[idx + 5] = DTid.x;
+	OutputBBox[idx + 4] = DTid.x;
 }

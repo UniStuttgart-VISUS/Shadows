@@ -62,19 +62,6 @@ struct MeshData
 	MeshData() : Model(NULL), NumSuccessfulTests(0) {}
 };
 
-
-struct PerTriangleData {
-	PerTriangleData() : minX(0u), minY(0u), maxX(0u), maxY(0u), index(0u),
-		tIndex(0u) { }
-
-	uint32 minX;
-	uint32 minY;
-	uint32 maxX;
-	uint32 maxY;
-	uint32 index;
-	uint32 tIndex;
-};
-
 class MeshRenderer
 {
 
@@ -322,7 +309,6 @@ protected:
 	RWBuffer perTriangleBuffer;
 	RWBuffer histogramCount;
 	ID3D11BufferPtr stagingBuffer;
-	std::vector<PerTriangleData> perTriangleBufferCpu;
 
     StructuredBuffer tail_buffer;
 };

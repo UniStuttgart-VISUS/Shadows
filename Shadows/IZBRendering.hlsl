@@ -60,7 +60,7 @@ bool RayIntersectsTriangle(const float3 rayOrigin, const float3 rayVector,
 	return result;
 }
 
-[numthreads(64, 4, 1)]
+[numthreads(64, 8, 1)]
 void main(uint3 DTid : SV_DispatchThreadID) {
 	// Skip unnecessary threads...
 	uint id = DTid.x;
@@ -69,8 +69,8 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	}
 
 	// Get the triangles.
-	id = vertexCount.y * (vertexCount.x * 6) + (id * 6);
-	uint tIdx = BBoxData[id + 5];
+	id = vertexCount.y * (vertexCount.x * 5) + (id * 5);
+	uint tIdx = BBoxData[id + 4];
 	int3 triangleIndices = int3(Indices.Load(tIdx * 3 + 0),
 		Indices.Load(tIdx * 3 + 1), Indices.Load(tIdx * 3 + 2));
 	float3 v0 = Vertices.Load(triangleIndices.x);

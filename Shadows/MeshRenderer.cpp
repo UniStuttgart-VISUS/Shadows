@@ -27,7 +27,7 @@ static const float ShadowNearClip = 1.0f;
 static const bool UseComputeReduction = true;
 static const int headTextureWidth = 2048;
 static const int headTextureHeight = 2048;
-static const size_t ptdElementCount = 6;
+static const size_t ptdElementCount = 5;
 static const size_t histElementCount = 6;
 static const std::array<uint32, histElementCount> bboxSizes = {
 	4,8,32,128,512,512*512 };
@@ -1849,7 +1849,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	// Create the RW buffer that will contain the bounding box and the index in the
 	// vector for the rendering.
 	this->perTriangleBuffer.Initialize(device, DXGI_FORMAT_R32_UINT, sizeof(uint32),
-		(scene.Indices.NumElements / 3) * ptdElementCount * histElementCount);
+		((scene.Indices.NumElements / 3) * ptdElementCount) * histElementCount);
 
 	// Remember the number of triangles in each bin.
 	this->histogramCount.Initialize(device, DXGI_FORMAT_R32_UINT, sizeof(uint32),
@@ -1863,8 +1863,6 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 
         // Create the staging buffer.
         DXCall(device->CreateBuffer(&desc, nullptr, &this->stagingBuffer));
-        this->perTriangleBufferCpu.resize(
-            this->perTriangleBuffer.NumElements / ptdElementCount);
     }
 
 	// Create the vector that will contain the SRVs and the vector that will create
@@ -2070,7 +2068,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 
 			// Dispatch the shader.
 			uint32 dispatchX = counts[i] / 64 + 1;
-			uint32 dispatchY = bboxSizes[i] / 4 + 1;
+			uint32 dispatchY = bboxSizes[i] / 8  + 1;
 			context->Dispatch(dispatchX, dispatchY, 1);
 		}
 
