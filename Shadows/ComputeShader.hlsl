@@ -26,8 +26,7 @@ RWTexture2D<float4> Output : register(u0);
 RWTexture2D<int> HEAD : register(u1);
 RWTexture2D<int> TAIL : register(u2);
 
-struct TailSample
-{
+struct TailSample {
     int next;
     float3 ws_pos;
 };

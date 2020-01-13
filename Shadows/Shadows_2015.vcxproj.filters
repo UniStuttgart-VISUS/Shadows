@@ -281,5 +281,6 @@
     <FxCompile Include="IZBBoundingBox.hlsl" />
     <FxCompile Include="IZBResetTextures.hlsl" />
     <FxCompile Include="IZBRenderingBig.hlsl" />
+    <FxCompile Include="IZBIntersectionPre.hlsl" />
   </ItemGroup>
 </Project>

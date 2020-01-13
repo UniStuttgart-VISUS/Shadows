@@ -22,6 +22,7 @@
 #include "SampleFramework11/ShaderCompilation.h"
 #include "ComputeShader.h"
 #include "IZBBoundingBox.h"
+#include "IZBIntersectionPre.h"
 #include "IZBRendering.h"
 #include "IZBRenderingBig.h"
 #include "IZBResetTextures.h"
@@ -292,23 +293,26 @@ protected:
 
 	ID3D11Query* queryObj;
 	D3D11_QUERY_DESC queryDesc;
+	std::vector<ID3D11ShaderResourceView*> srvsInterPre;
 	std::vector<ID3D11ShaderResourceView*> srvsHistComp;
 	std::vector<ID3D11ShaderResourceView*> srvsRendering;
 	std::vector<ID3D11ShaderResourceView*> srvsReset;
 	std::vector<ID3D11UnorderedAccessView*> uavsClear;
 	std::vector<ID3D11UnorderedAccessView*> uavsCreation;
 	std::vector<ID3D11UnorderedAccessView*> uavsHistComp;
+	std::vector<ID3D11UnorderedAccessView*> uavsInterPre;
 	std::vector<ID3D11UnorderedAccessView*> uavsRendering;
 	std::vector<ID3D11UnorderedAccessView*> uavsReset;
 
-	ID3D11ComputeShader* izbCreationCS;
 	ID3D11ComputeShader* boundingBoxCS;
+	ID3D11ComputeShader* intersectionCS;
+	ID3D11ComputeShader* izbCreationCS;
 	ID3D11ComputeShader* izbRenderingCS;
 	ID3D11ComputeShader* izbRenderingBigCS;
 	ID3D11ComputeShader* izbResetCS;
 	RWBuffer perTriangleBuffer;
 	RWBuffer histogramCount;
 	ID3D11BufferPtr stagingBuffer;
-
-    StructuredBuffer tail_buffer;
+	StructuredBuffer triangleIntersect;
+    StructuredBuffer tailBuffer;
 };

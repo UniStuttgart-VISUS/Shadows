@@ -77,20 +77,6 @@ void main(uint3 DTid : SV_DispatchThreadID) {
     maxX = min(headSize.x, maxX);
     maxY = min(headSize.y, maxY);
 
-	// Check if the head texture has at least one value that is not -1.
-	int2 counts = int2(0, 0);
-	for (int i = minX; i <= maxX; ++i) {
-		for (int j = minY; j <= maxY; ++j) {
-			if (HEAD[int2(i, j)] == -1) {
-				counts.x++;
-			}
-			counts.y++;
-		}
-	}
-	if (counts.x == counts.y) {
-		return;
-	}
-
 	// Compute the index.
 	uint index = 0;
 	int bbSize = (1 + maxX - minX) * (1 + maxY - minY);

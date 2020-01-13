@@ -8,12 +8,18 @@ Buffer<uint> BBoxData : register(t3);
 Buffer<uint> InputHist : register(t4);
 RWTexture2D<int> VISMASK : register(u0);
 
-struct TailSample
-{
+struct TailSample {
     int next;
     float3 ws_pos;
 };
 StructuredBuffer<TailSample> TailBuffer : register(t5);
+
+struct IntersectSample {
+	float4 edge1A;
+	float4 edge2F;
+	float4 h;
+};
+StructuredBuffer<IntersectSample> IntersectValues : register(t6);
 
 
 cbuffer CSConstants : register(b1) {
@@ -30,10 +36,14 @@ cbuffer CSConstants : register(b1) {
 };
 
 
+static const float EPSILON = 0.0000001;
+static const float INFINITY = 1.0 / EPSILON;
+
+
 // ray-triangle based on the Möller–Trumbore  intersection algorithm
 bool RayIntersectsTriangle(const float3 rayOrigin, const float3 rayVector,
 		const float3 vertex0, const float3 edge1, const float3 edge2, const float a,
-		const float3 h, const float f, const float EPSILON, const float INFINITY) {
+		const float3 h, const float f) {
 	bool result = false;
 	float3 s = rayOrigin - vertex0;
 	float u = f * dot(s, h);
@@ -48,7 +58,7 @@ bool RayIntersectsTriangle(const float3 rayOrigin, const float3 rayVector,
 			// At this stage we can compute t to find out where the intersection
 			// point is on the line.
 			float t = f * dot(edge2, q);
-			if (t > EPSILON && t < INFINITY) {
+			if (t > ::EPSILON && t < ::INFINITY) {
 				result = true;
 			} else {
 				// This means that there is a line intersection but not a ray
@@ -82,14 +92,13 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	float4 v1_ws = mul(float4(v1, 1.0f), meshWorld).xyzw;
 	float4 v2_ws = mul(float4(v2, 1.0f), meshWorld).xyzw;
 
-	// Precomputation of values for the Ray -> Triangle intersection.
-	float EPSILON = 0.0000001;
-	float INFINITY = 1.0 / EPSILON;
-	float3 edge1 = v1_ws.xyz - v0_ws.xyz;
-	float3 edge2 = v2_ws.xyz - v0_ws.xyz;
-	float3 h = cross(lightDir, edge2);
-	float a = dot(edge1, h);
-	float f = 1.0 / a;
+	// Get the precomputed values for the Ray -> Triangle intersection.
+	IntersectSample values = IntersectValues[tIdx];
+	float3 edge1 = values.edge1A.xyz;
+	float3 edge2 = values.edge2F.xyz;
+	float3 h = values.h.xyz;
+	float a = values.edge1A.w;
+	float f = values.edge2F.w;
 
 	// Since this is true for all sample points we can skip the while loop.
 	if (a > -EPSILON && a < EPSILON) {
@@ -130,7 +139,7 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	
 		// Check if sample point intersects with the current triangle.
 		bool intersection = RayIntersectsTriangle(adjustedSamplePoint_ws,
-			lightDir, v0_ws.xyz, edge1, edge2, a, h, f, EPSILON, INFINITY);
+			lightDir, v0_ws.xyz, edge1, edge2, a, h, f);
 		if (intersection) {
 			// The sample point is shadowed.
 			VISMASK[samplePoint] = 0;

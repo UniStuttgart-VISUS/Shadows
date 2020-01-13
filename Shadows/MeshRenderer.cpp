@@ -1665,6 +1665,11 @@ void MeshRenderer::RenderShadowMapGPU(ID3D11DeviceContext* context, const Camera
 
 void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* context,
 		DepthStencilBuffer& depthBuffer, uint32 backbuffer_width, uint32 backbuffer_height) {
+	// Compute Shader (IZB Texutre and histogram reset).
+	this->izbResetCS = nullptr;
+	DXCall(device->CreateComputeShader(::IZBResetTexturesByteCode,
+		sizeof(::IZBResetTexturesByteCode), nullptr, &this->izbResetCS));
+
 	// Compute Shader (build IZB).
 	this->izbCreationCS = nullptr;
 	DXCall(device->CreateComputeShader(::ComputeShaderByteCode,
@@ -1675,6 +1680,11 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	DXCall(device->CreateComputeShader(::IZBBoundingBoxByteCode,
 		sizeof(::IZBBoundingBoxByteCode), nullptr, &this->boundingBoxCS));
 
+	// Compute Shader (precompute intersection test values per trinagle).
+	this->intersectionCS = nullptr;
+	DXCall(device->CreateComputeShader(::IZBIntersectionPreByteCode,
+		sizeof(::IZBIntersectionPreByteCode), nullptr, &this->intersectionCS));
+
 	// Compute Shader (IZB rendering).
 	this->izbRenderingCS = nullptr;
 	DXCall(device->CreateComputeShader(::IZBRenderingByteCode,
@@ -1684,11 +1694,6 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	this->izbRenderingBigCS = nullptr;
 	DXCall(device->CreateComputeShader(::IZBRenderingBigByteCode,
 		sizeof(::IZBRenderingBigByteCode), nullptr, &this->izbRenderingBigCS));
-
-	// Compute Shader (IZB Texutre and histogram reset).
-	this->izbResetCS = nullptr;
-	DXCall(device->CreateComputeShader(::IZBResetTexturesByteCode,
-		sizeof(::IZBResetTexturesByteCode), nullptr, &this->izbResetCS));
 
     uint viewport_width = backbuffer_width;
     uint viewport_height = backbuffer_height;
@@ -1795,7 +1800,8 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 		&this->tailSRV));
 
     // Alternate use structured buffer for tail
-    tail_buffer.Initialize(device, sizeof(Float4), viewport_height * viewport_width, true);
+	this->tailBuffer.Initialize(device, sizeof(Float4),
+		viewport_height * viewport_width, true);
 
 	// QUERY
 	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
@@ -1861,6 +1867,10 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	this->histogramCount.Initialize(device, DXGI_FORMAT_R32_UINT, sizeof(uint32),
 		histElementCount);
 
+	// Remember the precomputed value for the ray triangle intersection test.
+	this->triangleIntersect.Initialize(device, sizeof(Float4) * 3,
+		scene.Indices.NumElements / 3, true);
+
     {
         // Get the description of the per triangle data buffer.
         D3D11_BUFFER_DESC desc;
@@ -1873,16 +1883,19 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 
 	// Create the vector that will contain the SRVs and the vector that will create
 	// the UAVs.
+	this->srvsInterPre = { scene.Indices.SRView, this->vertexBufferSRV };
 	this->srvsHistComp = { scene.Indices.SRView, this->vertexBufferSRV,
 		this->headSRV };
 	this->srvsRendering = { scene.Indices.SRView, this->vertexBufferSRV,
 		this->headSRV, this->perTriangleBuffer.SRView, this->histogramCount.SRView,
-		this->tail_buffer.SRView };
-	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+		this->tailBuffer.SRView, this->triangleIntersect.SRView };
+	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr};
 	this->uavsCreation = { this->worldPosUAV, this->headUAV, this->tailUAV,
-		this->tail_buffer.UAView };
+		this->tailBuffer.UAView };
 	this->uavsClear = { this->visMapUAV, this->headUAV, this->tailUAV,
 		this->histogramCount.UAView };
+	this->uavsInterPre = { this->triangleIntersect.UAView };
 	this->uavsHistComp = { this->perTriangleBuffer.UAView,
 		this->histogramCount.UAView };
 	this->uavsRendering = { this->visMapUAV };
@@ -2027,6 +2040,40 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 
 		// Copy the per triangle data to the staging buffer.
 		context->CopyResource(this->stagingBuffer, this->histogramCount.Buffer);
+	}
+
+	{
+		ProfileBlock block(L"Intersection precomputation");
+
+		//Setup for dispatch
+		SetCSShader(context, this->intersectionCS);
+		this->computeShaderConstants.SetCS(context, 1);
+		context->CSSetShaderResources(0,
+			static_cast<uint>(this->srvsInterPre.size()),
+			this->srvsInterPre.data());
+		context->CSSetUnorderedAccessViews(0,
+			static_cast<UINT>(this->uavsInterPre.size()),
+			this->uavsInterPre.data(), nullptr);
+
+		// Dispatch the compute shader.
+		uint32 dispatchX = this->computeShaderConstants.Data.vertexCount.x / 64 + 1;
+		context->Dispatch(dispatchX, 1, 1);
+
+		// wait for compute shader
+		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+
+		// Cleanup
+		ClearCSInputs(context);
+		ClearCSOutputs(context);
+		context->CSSetShaderResources(0,
+			static_cast<uint>(this->srvsInterPre.size()), this->srvsReset.data());
+		context->CSSetUnorderedAccessViews(0,
+			static_cast<UINT>(this->uavsInterPre.size()), this->uavsReset.data(),
+			nullptr);
+	}
+
+	{
+		ProfileBlock block(L"Download Histogram data");
 
 		// Download the histogram count data.
 		D3D11_MAPPED_SUBRESOURCE subRes;
