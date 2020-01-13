@@ -94,16 +94,18 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	// Compute the index.
 	uint index = 0;
 	int bbSize = (1 + maxX - minX) * (1 + maxY - minY);
-	if (bbSize > 4 && bbSize <= 8) {
+	if (bbSize > 2 && bbSize <= 4) {
 		index = 1;
-	} else if (bbSize > 8 && bbSize <= 32) {
+	} else if (bbSize > 4 && bbSize <= 8) {
 		index = 2;
-	} else if (bbSize > 32 && bbSize <= 128) {
+	} else if (bbSize > 8 && bbSize <= 64) {
 		index = 3;
-	} else if (bbSize > 128 && bbSize <= 512) {
+	} else if (bbSize > 64 && bbSize <= 512) {
 		index = 4;
-	} else if (bbSize > 512) {
+	} else if (bbSize > 512 && bbSize <= 8192) {
 		index = 5;
+	} else if (bbSize > 8192) {
+		index = 6;
 	}
 
 	// Increase the counter for the histogram bin and used the returned value as the

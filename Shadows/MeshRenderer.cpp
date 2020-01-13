@@ -28,9 +28,15 @@ static const bool UseComputeReduction = true;
 static const int headTextureWidth = 2048;
 static const int headTextureHeight = 2048;
 static const size_t ptdElementCount = 5;
-static const size_t histElementCount = 6;
+static const size_t histElementCount = 7;
 static const std::array<uint32, histElementCount> bboxSizes = {
-	4,8,32,128,512,512*512 };
+	2,
+	4,
+	8,
+	64,
+	512,
+	8192,
+	(static_cast<uint32>(headTextureWidth) * static_cast<uint32>(headTextureHeight)) / 2 };
 
 // Finds the approximate smallest enclosing bounding sphere for a set of points. Based on
 // "An Efficient Bounding Sphere", by Jack Ritter.
@@ -1674,6 +1680,11 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	DXCall(device->CreateComputeShader(::IZBRenderingByteCode,
 		sizeof(::IZBRenderingByteCode), nullptr, &this->izbRenderingCS));
 
+	// Compute Shader (IZB rendering bounding boxes >= 8).
+	this->izbRenderingBigCS = nullptr;
+	DXCall(device->CreateComputeShader(::IZBRenderingBigByteCode,
+		sizeof(::IZBRenderingBigByteCode), nullptr, &this->izbRenderingBigCS));
+
 	// Compute Shader (IZB Buffer reset).
 	this->izbResetBuffCS = nullptr;
 	DXCall(device->CreateComputeShader(::IZBResetBuffersByteCode,
@@ -2001,7 +2012,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 	}
 
 	// Start the BoundingBox computataion.
-	std::array<uint32, histElementCount> counts = { 0,0,0,0,0,0 };
+	std::array<uint32, histElementCount> counts = { 0,0,0,0,0,0,0 };
 	{
 		ProfileBlock block(L"Histogram computation");
 
@@ -2058,7 +2069,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			this->uavsRendering.data(), nullptr);
 
 		// Dispatch the compute shaders.
-		for (size_t i = 0; i < histElementCount; ++i) {
+		for (size_t i = 0; i < 2; ++i) {
 			// Update index of the histogram bin.
 			this->computeShaderConstants.Data.vertexCount.y = static_cast<uint>(i);
 
@@ -2068,9 +2079,35 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 
 			// Dispatch the shader.
 			uint32 dispatchX = counts[i] / 64 + 1;
-			uint32 dispatchY = bboxSizes[i] / 8  + 1;
+			uint32 dispatchY = bboxSizes[i] / 4 + 1;
 			context->Dispatch(dispatchX, dispatchY, 1);
 		}
+
+		//Setup for dispatch of bigger bounding boxes.
+		SetCSShader(context, this->izbRenderingBigCS);
+		this->computeShaderConstants.SetCS(context, 1);
+		context->CSSetShaderResources(0,
+			static_cast<UINT>(this->srvsRendering.size()),
+			this->srvsRendering.data());
+		context->CSSetUnorderedAccessViews(0,
+			static_cast<UINT>(this->uavsRendering.size()),
+			this->uavsRendering.data(), nullptr);
+
+		// Dispatch the compute shaders.
+		for (size_t i = 2; i < 6/*histElementCount*/; ++i) {
+			// Update index of the histogram bin.
+			this->computeShaderConstants.Data.vertexCount.y = static_cast<uint>(i);
+
+			// Appy the changes and set the constants.
+			this->computeShaderConstants.ApplyChanges(context);
+			this->computeShaderConstants.SetCS(context, 1);
+
+			// Dispatch the shader.
+			uint32 dispatchX = counts[i] / 4 + 1;
+			uint32 dispatchY = bboxSizes[i] / 64 + 1;
+			context->Dispatch(dispatchX, dispatchY, 1);
+		}
+
 
 		// wait for compute shader
 		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);

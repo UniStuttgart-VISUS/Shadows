@@ -23,6 +23,7 @@
 #include "ComputeShader.h"
 #include "IZBBoundingBox.h"
 #include "IZBRendering.h"
+#include "IZBRenderingBig.h"
 #include "IZBResetBuffers.h"
 #include "IZBResetTextures.h"
 #include "AppSettings.h"
@@ -304,6 +305,7 @@ protected:
 	ID3D11ComputeShader* izbCreationCS;
 	ID3D11ComputeShader* boundingBoxCS;
 	ID3D11ComputeShader* izbRenderingCS;
+	ID3D11ComputeShader* izbRenderingBigCS;
 	ID3D11ComputeShader* izbResetBuffCS;
 	ID3D11ComputeShader* izbResetTexCS;
 	RWBuffer perTriangleBuffer;

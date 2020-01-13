@@ -25,13 +25,12 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	}
 
 	// Reset the Bounding Box values for the triangle.
-	uint idx = DTid.x * 6;
+	uint idx = DTid.x * 5;
 	OutputBBox[idx + 0] = 0;
 	OutputBBox[idx + 1] = 0;
 	OutputBBox[idx + 2] = 0;
 	OutputBBox[idx + 3] = 0;
 	OutputBBox[idx + 4] = 0;
-	OutputBBox[idx + 5] = 0;
 
 	// Reset the histogram bin count.
 	OutputHist[0] = 0;
@@ -40,4 +39,5 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	OutputHist[3] = 0;
 	OutputHist[4] = 0;
 	OutputHist[5] = 0;
+	OutputHist[6] = 0;
 }
