@@ -23,7 +23,7 @@ cbuffer CSConstants : register(b1)
 
 Texture2DMS<float4> Input : register(t0);
 RWTexture2D<float4> Output : register(u0);
-RWTexture2D<int> HEAD : register(u1);
+RWBuffer<int> HEAD : register(u1);
 
 struct TailSample {
 	float3 ws_pos;
@@ -87,7 +87,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	int lastID = -2;
     
 	//write index to head 
-	InterlockedExchange(HEAD[int2(u, v)], linear_idx, lastID);
+	InterlockedExchange(HEAD[u + v * headSize.x], linear_idx, lastID);
     
     // compute linear tail pixel index
 	TailBuffer[linear_idx].ws_pos = worldSpacePosition.xyz;

@@ -167,4 +167,13 @@ ShaderCache/
 */.vs
 /Shadows/.vs/Shadows_2015/v16
 /Shadows/.vs/Shadows_2015/v15
+/Shadows/FuncStats.txt
+/Shadows/GuidStats.txt
+/Shadows/present.txt
 
+Shadows/IZBBoundingBox.h
+Shadows/ComputeShader.h
+Shadows/IZBBoundingBox.h
+Shadows/IZBRendering.h
+Shadows/IZBRenderingBig.h
+Shadows/IZBResetTextures.h

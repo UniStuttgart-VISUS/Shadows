@@ -2,7 +2,7 @@
 #include "SharedConstants.h"
 
 RWTexture2D<int> VISMASK : register(u0);
-RWTexture2D<int> HEAD : register(u1);
+RWBuffer<int> HEAD : register(u1);
 RWBuffer<uint> OutputHist : register(u2);
 
 cbuffer CSConstants : register(b1) {
@@ -22,7 +22,7 @@ cbuffer CSConstants : register(b1) {
 void main(uint3 DTid : SV_DispatchThreadID) {
 	// Reset the head texture.
 	if (all(DTid.xy < headSize.xy)) {
-		HEAD[int2(DTid.xy)] = -1;
+		HEAD[DTid.x + DTid.y * headSize.x] = -1;
 	}
 
 	// Reset the vismask and tail texture.

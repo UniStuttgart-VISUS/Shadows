@@ -3,7 +3,7 @@
 
 StructuredBuffer<uint> Indices : register(t0);
 Buffer<float3> Vertices : register(t1);
-Texture2D<int> HEAD : register(t2);
+Buffer<int> HEAD : register(t2);
 
 struct BBoxSample {
 	uint4 bbox;
@@ -97,6 +97,25 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 		index = 5;
 	} else if (bbSize > 8192) {
 		index = 6;
+	}
+
+	// Check if the head texture has at least one value that is not -1.
+	if (index < 5) {
+		// Only do this for smaller bounding boxes.
+		int2 counts = int2(0, 0);
+		for (int i = minX; i <= maxX; ++i) {
+			for (int j = minY; j <= maxY; ++j) {
+				if (HEAD[i + j * headSize.x] == -1) {
+					counts.x++;
+				}
+				counts.y++;
+			}
+		}
+
+		// The bounding box would not change anything in the output so dropp it.
+		if (counts.x == counts.y) {
+			return;
+		}
 	}
 
 	// Increase the counter for the histogram bin and used the returned value as the

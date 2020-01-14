@@ -36,7 +36,8 @@ static const std::array<uint32, histElementCount> bboxSizes = {
 	64,
 	512,
 	8192,
-	((static_cast<uint32>(headTextureWidth) * static_cast<uint32>(headTextureHeight)) / 2) + 2896};
+	((static_cast<uint32>(headTextureWidth) * static_cast<uint32>(headTextureHeight)) / 2)
+};
 
 // Finds the approximate smallest enclosing bounding sphere for a set of points. Based on
 // "An Efficient Bounding Sphere", by Jack Ritter.
@@ -1733,40 +1734,11 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	DXCall(device->CreateShaderResourceView(this->worldPosTexture, &worldPosSRVDesc,
 		&worldPosSRV));
 
-	// HEAD
-	D3D11_TEXTURE2D_DESC headTextureDesc;
-	ZeroMemory(&headTextureDesc, sizeof(headTextureDesc));
-	headTextureDesc.BindFlags =
-		D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	headTextureDesc.Format = DXGI_FORMAT_R32_SINT;
-	headTextureDesc.Height = headTextureHeight;
-	headTextureDesc.Width = headTextureWidth;
-	headTextureDesc.ArraySize = 1;
-	headTextureDesc.MipLevels = 1;
-	headTextureDesc.SampleDesc.Count = 1;
-	headTextureDesc.SampleDesc.Quality = 0;
-	headTextureDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&headTextureDesc, nullptr, &this->headTexture));
+	// The linear buffer that contains the HEAD.
+	this->headBuffer.Initialize(device, DXGI_FORMAT_R32_SINT, sizeof(int),
+		headTextureHeight * headTextureWidth);
 
-	// create UAV for head 
-	D3D11_UNORDERED_ACCESS_VIEW_DESC headUAVDesc;
-	ZeroMemory(&headUAVDesc, sizeof(headUAVDesc));
-	headUAVDesc.Format = DXGI_FORMAT_R32_SINT;
-	headUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	DXCall(device->CreateUnorderedAccessView(this->headTexture, &headUAVDesc,
-		&this->headUAV));
-
-	// create SRV for head
-	CD3D11_SHADER_RESOURCE_VIEW_DESC headSRVDesc;
-	ZeroMemory(&headSRVDesc, sizeof(headSRVDesc));
-	headSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	headSRVDesc.Format = DXGI_FORMAT_R32_SINT;
-	headSRVDesc.Texture2D.MipLevels = 1;
-	headSRVDesc.Texture2D.MostDetailedMip = 0;
-	DXCall(device->CreateShaderResourceView(this->headTexture, &headSRVDesc,
-		&this->headSRV));
-
-    // Alternate use structured buffer for tail
+    // The linear buffer that contains the TAIL.
 	this->tailBuffer.Initialize(device, sizeof(Float3) + sizeof(uint32),
 		viewport_height * viewport_width, true);
 
@@ -1852,15 +1824,16 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	// the UAVs.
 	this->srvsInterPre = { scene.Indices.SRView, this->vertexBufferSRV };
 	this->srvsHistComp = { scene.Indices.SRView, this->vertexBufferSRV,
-		this->headSRV };
+		this->headBuffer.SRView };
 	this->srvsRendering = { scene.Indices.SRView, this->vertexBufferSRV,
-		this->headSRV, this->perTriangleBuffer.SRView, this->histogramCount.SRView,
-		this->tailBuffer.SRView, this->triangleIntersect.SRView };
+		this->headBuffer.SRView, this->perTriangleBuffer.SRView,
+		this->histogramCount.SRView, this->tailBuffer.SRView,
+		this->triangleIntersect.SRView };
 	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 		nullptr};
-	this->uavsCreation = { this->worldPosUAV, this->headUAV,
+	this->uavsCreation = { this->worldPosUAV, this->headBuffer.UAView,
 		this->tailBuffer.UAView };
-	this->uavsClear = { this->visMapUAV, this->headUAV,
+	this->uavsClear = { this->visMapUAV, this->headBuffer.UAView,
 		this->histogramCount.UAView };
 	this->uavsInterPre = { this->triangleIntersect.UAView };
 	this->uavsHistComp = { this->perTriangleBuffer.UAView,
@@ -2120,9 +2093,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 	}
 
 	// Select the return value.
-	if (AppSettings::DebugMode == DebugMode::Head) {
-		return this->headTexture;
-	} else if (AppSettings::DebugMode == DebugMode::ComputeShader) {
+	if (AppSettings::DebugMode == DebugMode::ComputeShader) {
 		return this->worldPosTexture;
 	} else if (AppSettings::DebugMode == DebugMode::VisibilityMask) {
 		return this->visMap;

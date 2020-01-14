@@ -3,7 +3,7 @@
 
 StructuredBuffer<uint> Indices : register(t0);
 Buffer<float3> Vertices : register(t1);
-Texture2D<int> HEAD : register(t2);
+Buffer<int> HEAD : register(t2);
 
 struct BBoxSample {
 	uint4 bbox;
@@ -128,7 +128,7 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	}
 
 	// Get the initial value from the HEAD texture.
-	int value = HEAD[int2(xCoord, yCoord)];
+	int value = HEAD[xCoord + yCoord * headSize.x];
 
 	// Iterate over all the sample points in the izb list.
 	while (value != -1) {
