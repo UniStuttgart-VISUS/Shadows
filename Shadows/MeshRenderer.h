@@ -271,18 +271,13 @@ protected:
 
 	ConstantBuffer<ComputeShaderConstants> computeShaderConstants;
 
-	ID3D11UnorderedAccessView* worldPosUAV;
 	ID3D11UnorderedAccessView* verticesUAV;
 	ID3D11UnorderedAccessView* visMapUAV;
 
 	ID3D11ShaderResourceView* vertexBufferSRV;
 	ID3D11ShaderResourceView* worldPosSRV;
 
-
-	ID3D11Texture2D* worldPosTexture;
 	ID3D11Texture2D* visMap;
-
-
 	ID3D11Buffer* vertexBuffer;
 
 	ID3D11Query* queryObj;

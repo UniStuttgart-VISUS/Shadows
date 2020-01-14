@@ -22,32 +22,26 @@ cbuffer CSConstants : register(b1)
 };
 
 Texture2DMS<float4> Input : register(t0);
-RWTexture2D<float4> Output : register(u0);
-RWBuffer<int> HEAD : register(u1);
+RWBuffer<int> HEAD : register(u0);
 
 struct TailSample {
 	float3 ws_pos;
     int next;
 };
-RWStructuredBuffer<TailSample> TailBuffer : register(u2);
+RWStructuredBuffer<TailSample> TailBuffer : register(u1);
 
 [numthreads(16, 16, 1)]
-void main(uint3 DTid : SV_DispatchThreadID)
-{
+void main(uint3 DTid : SV_DispatchThreadID) {
     // check DTid
-	if (any(DTid.xy >= texSize.xy))
-	{
+	if (any(DTid.xy >= texSize.xy)) {
 		return;
 	}
-    //Reset Output Texture
-    Output[int2(DTid.xy)] = float4(0.0f, 0.0f, 0.0f,1.0f);
 
 	// Depth Transformation
 	float depth = Input.Load(int2(DTid.xy), 0).x;
     
     // Discard Skybox
-	if (depth > 0.9999f)
-	{
+	if (depth > 0.9999f) {
 		return;
 	}
 
@@ -64,18 +58,13 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
 	// Transformation to world space
 	float4 worldSpacePosition = mul(viewInv, viewSpacePosition);
-    
-    //save world coordinates for the sample point
-    Output[DTid.xy] = float4(worldSpacePosition.xyz, 1.0f);
 
 	// Transformation to Light Space via orthographic projection
 	float4 lightSpacePosition = mul(viewProj, worldSpacePosition);
 
-    ////////////////////////////////////////////////////////////////////////////////////////////////
     // IZB
     float u_f = lightSpacePosition.x * headSize.x;
     float v_f = lightSpacePosition.y * headSize.y;
-    
     
     int u = floor(u_f);
     int v = floor(v_f);

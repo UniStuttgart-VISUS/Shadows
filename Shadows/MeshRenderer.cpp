@@ -1699,41 +1699,6 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
     uint viewport_width = backbuffer_width;
     uint viewport_height = backbuffer_height;
 
-	// IZB TEXTURES
-	// Create world space texture desc
-	D3D11_TEXTURE2D_DESC worldPosDesc;
-	ZeroMemory(&worldPosDesc, sizeof(worldPosDesc));
-	worldPosDesc.BindFlags =
-		D3D11_BIND_UNORDERED_ACCESS | D3D11_BIND_SHADER_RESOURCE;
-	worldPosDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	worldPosDesc.Height = viewport_height;
-	worldPosDesc.Width = viewport_width;
-	worldPosDesc.ArraySize = 1;
-	worldPosDesc.MipLevels = 1;
-	worldPosDesc.SampleDesc.Count = 1;
-	worldPosDesc.SampleDesc.Quality = 0;
-	worldPosDesc.Usage = D3D11_USAGE_DEFAULT;
-	DXCall(device->CreateTexture2D(&worldPosDesc, nullptr, &this->worldPosTexture));
-
-	//Create UAV for world pos texture
-	D3D11_UNORDERED_ACCESS_VIEW_DESC worldPosUAVDesc;
-	ZeroMemory(&worldPosUAVDesc, sizeof(worldPosUAVDesc));
-	worldPosUAVDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	worldPosUAVDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
-	worldPosUAVDesc.Texture2D.MipSlice = 0;
-	DXCall(device->CreateUnorderedAccessView(this->worldPosTexture,
-		&worldPosUAVDesc, &worldPosUAV));
-
-	// create SRV for world space texture
-	CD3D11_SHADER_RESOURCE_VIEW_DESC worldPosSRVDesc;
-	ZeroMemory(&worldPosSRVDesc, sizeof(worldPosSRVDesc));
-	worldPosSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-	worldPosSRVDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	worldPosSRVDesc.Texture2D.MipLevels = 1;
-	worldPosSRVDesc.Texture2D.MostDetailedMip = 0;
-	DXCall(device->CreateShaderResourceView(this->worldPosTexture, &worldPosSRVDesc,
-		&worldPosSRV));
-
 	// The linear buffer that contains the HEAD.
 	this->headBuffer.Initialize(device, DXGI_FORMAT_R32_SINT, sizeof(int),
 		headTextureHeight * headTextureWidth);
@@ -1831,8 +1796,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 		this->triangleIntersect.SRView };
 	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 		nullptr};
-	this->uavsCreation = { this->worldPosUAV, this->headBuffer.UAView,
-		this->tailBuffer.UAView };
+	this->uavsCreation = { this->headBuffer.UAView, this->tailBuffer.UAView };
 	this->uavsClear = { this->visMapUAV, this->headBuffer.UAView,
 		this->histogramCount.UAView };
 	this->uavsInterPre = { this->triangleIntersect.UAView };
@@ -2093,12 +2057,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 	}
 
 	// Select the return value.
-	if (AppSettings::DebugMode == DebugMode::ComputeShader) {
-		return this->worldPosTexture;
-	} else if (AppSettings::DebugMode == DebugMode::VisibilityMask) {
-		return this->visMap;
-	} else {
-		return this->visMap;
-	}
+	return this->visMap;
 }
 
