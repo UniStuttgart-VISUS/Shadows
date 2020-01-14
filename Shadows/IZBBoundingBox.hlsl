@@ -100,12 +100,12 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	}
 
 	// Check if the head texture has at least one value that is not -1.
-	if (index < 5) {
+	if (index < 6) {
 		// Only do this for smaller bounding boxes.
 		int2 counts = int2(0, 0);
-		for (int i = minX; i <= maxX; ++i) {
-			for (int j = minY; j <= maxY; ++j) {
-				if (HEAD[i + j * headSize.x] == -1) {
+		for (int j = minY; j <= maxY; ++j) {
+			for (int i = minX; i <= maxX; ++i) {
+				if (HEAD[j * headSize.x + i] == -1) {
 					counts.x++;
 				}
 				counts.y++;

@@ -1704,7 +1704,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 		headTextureHeight * headTextureWidth);
 
     // The linear buffer that contains the TAIL.
-	this->tailBuffer.Initialize(device, sizeof(Float3) + sizeof(uint32),
+	this->tailBuffer.Initialize(device, sizeof(Float3) + sizeof(int),
 		viewport_height * viewport_width, true);
 
 	// QUERY
@@ -2041,7 +2041,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			uint32 dispatchY = bboxSizes[i] / 64 + 1;
 			context->Dispatch(dispatchX, dispatchY, 1);
 		}
-
 
 		// wait for compute shader
 		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);

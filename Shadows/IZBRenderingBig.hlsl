@@ -131,6 +131,7 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	int value = HEAD[xCoord + yCoord * headSize.x];
 
 	// Iterate over all the sample points in the izb list.
+	float3 adjustedLightDir = 0.025f * lightDir;
 	while (value != -1) {
 		// Get the sample point.
 		int2 samplePoint = int2(value % texSize.x, floor(value / texSize.x) );
@@ -141,7 +142,7 @@ void main(uint3 DTid : SV_DispatchThreadID) {
         value = s.next;
 	
 		// Adjust samplepoint to avoid self intersection.
-		float3 adjustedSamplePoint_ws = samplePoint_ws + 0.025f * lightDir;
+		float3 adjustedSamplePoint_ws = samplePoint_ws + adjustedLightDir;
 	
 		// Check if sample point intersects with the current triangle.
 		bool intersection = RayIntersectsTriangle(adjustedSamplePoint_ws,
