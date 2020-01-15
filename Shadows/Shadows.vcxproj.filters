@@ -248,6 +248,7 @@
     <None Include="AppSettings.hlsl" />
     <None Include="SetupShadows.hlsl" />
     <None Include="GPUBatch.hlsl" />
+    <None Include="Shadows.sln" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="SampleFramework11">
@@ -273,5 +274,13 @@
     <CustomBuild Include="AppSettings.cs" />
     <CustomBuild Include="..\Externals\AntTweakBar\bin\AntTweakBar64.dll" />
     <CustomBuild Include="..\Externals\d3dcompiler_46.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="IZBBoundingBox.hlsl" />
+    <FxCompile Include="IZBIntersectionPre.hlsl" />
+    <FxCompile Include="IZBRendering.hlsl" />
+    <FxCompile Include="IZBRenderingBig.hlsl" />
+    <FxCompile Include="IZBResetTextures.hlsl" />
+    <FxCompile Include="ComputeShader.hlsl" />
   </ItemGroup>
 </Project>

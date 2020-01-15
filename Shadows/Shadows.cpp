@@ -364,6 +364,14 @@ void ShadowsApp::RenderMainPass()
 		meshRenderer.Render(context, camera, meshWorld, characterWorld);
 
 		skybox.RenderSky(context, lightDir, true, camera.ViewMatrix(), camera.ProjectionMatrix());
+
+	} else if (AppSettings::DebugMode == DebugMode::ComputeShader ||
+			AppSettings::DebugMode == DebugMode::Head ||
+			AppSettings::DebugMode == DebugMode::Tail ||
+			AppSettings::DebugMode == DebugMode::VisibilityMask) {
+		if (AppSettings::AutoComputeDepthBounds) {
+			meshRenderer.ReduceDepth(context, depthBuffer.SRView, camera);
+		}
 	}
 
 }

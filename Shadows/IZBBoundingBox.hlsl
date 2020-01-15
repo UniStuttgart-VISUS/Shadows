@@ -42,14 +42,22 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	float3 v2 = Vertices.Load(triangleIndices.z);
 
 	// Transformation to world space
-	float4 v0_ws = mul(float4(v0, 1.0f), meshWorld).xyzw;
-	float4 v1_ws = mul(float4(v1, 1.0f), meshWorld).xyzw;
-	float4 v2_ws = mul(float4(v2, 1.0f), meshWorld).xyzw;
+	float4 v0_ws = mul(meshWorld, float4(v0, 1.0f)).xyzw;
+	float4 v1_ws = mul(meshWorld, float4(v1, 1.0f)).xyzw;
+	float4 v2_ws = mul(meshWorld, float4(v2, 1.0f)).xyzw;
 
 	// Transformation to Light Space via orthographic projection
 	float4 v0_ls = mul(viewProj, v0_ws);
 	float4 v1_ls = mul(viewProj, v1_ws);
 	float4 v2_ls = mul(viewProj, v2_ws);
+
+	bool reject = (v0_ls.x < 0.0 && v1_ls.x < 0.0 && v2_ls.x < 0.0) ||
+		(v0_ls.x > 1.0 && v1_ls.x > 1.0 && v2_ls.x > 1.0) ||
+		(v0_ls.y < 0.0 && v1_ls.y < 0.0 && v2_ls.y < 0.0) ||
+		(v0_ls.y > 1.0 && v1_ls.y > 1.0 && v2_ls.y > 1.0);
+	if (reject) {
+		return;
+	}
 
 	// Vertex scaling.
 	int v0_u = v0_ls.x * headSize.x;
@@ -79,8 +87,8 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	// Make sure the size is positive or at least zero.
     minX = max(0, minX);
     minY = max(0, minY);
-    maxX = min(headSize.x, maxX);
-    maxY = min(headSize.y, maxY);
+    maxX = min(headSize.x -1, maxX);
+    maxY = min(headSize.y -1, maxY);
 
 	// Compute the index.
 	uint index = 0;
@@ -111,7 +119,7 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 				counts.y++;
 			}
 		}
-
+	
 		// The bounding box would not change anything in the output so dropp it.
 		if (counts.x == counts.y) {
 			return;

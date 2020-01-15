@@ -25,8 +25,8 @@
 // Constants
 static const float ShadowNearClip = 1.0f;
 static const bool UseComputeReduction = true;
-static const int headTextureWidth = 2048;
-static const int headTextureHeight = 2048;
+static const int headTextureWidth = 1024;
+static const int headTextureHeight = 1024;
 static const size_t ptdElementCount = 5;
 static const size_t histElementCount = 7;
 static const std::array<uint32, histElementCount> bboxSizes = {
@@ -278,6 +278,27 @@ static Float4x4 MakeGlobalShadowMatrix(const Camera& camera)
 	};
 
 	Float4x4 invViewProj = Float4x4::Invert(camera.ViewProjectionMatrix());
+
+	if ((AppSettings::DebugMode == DebugMode::ComputeShader ||
+			AppSettings::DebugMode == DebugMode::Head ||
+			AppSettings::DebugMode == DebugMode::Tail ||
+			AppSettings::DebugMode == DebugMode::VisibilityMask) &&
+			AppSettings::AutoComputeDepthBounds) {
+		bool changeFrustrum = !((AppSettings::MinCascadeDistance == 0.0) &&
+			(AppSettings::MaxCascadeDistance == 0.0));
+		if (changeFrustrum) {
+			float nearnew = std::max(
+				AppSettings::MinCascadeDistance * camera.NearClip(), 0.001f);
+			float farnew = std::max(
+				AppSettings::MaxCascadeDistance * camera.FarClip(),
+				nearnew + 0.001f);
+			Float4x4 view = camera.ViewMatrix();
+			Float4x4 proj_new = XMMatrixPerspectiveFovLH(0.58904862f, 1.7777777,
+				nearnew, farnew);
+			invViewProj = Float4x4::Invert(view * proj_new);
+		}
+	}
+
 	Float3 frustumCenter = 0.0f;
 	for (uint64 i = 0; i < 8; ++i)
 	{
@@ -307,9 +328,10 @@ static Float4x4 MakeGlobalShadowMatrix(const Camera& camera)
 		0.5f, 0.0f, 1.0f);
 
 	// TODO: new orthographic camera with dynamic values
-	if (AppSettings::DebugMode == DebugMode::ComputeShader || AppSettings::DebugMode == DebugMode::Head || AppSettings::DebugMode == DebugMode::Tail|| AppSettings::DebugMode == DebugMode::VisibilityMask) {
-
-
+	if (AppSettings::DebugMode == DebugMode::ComputeShader ||
+			AppSettings::DebugMode == DebugMode::Head ||
+			AppSettings::DebugMode == DebugMode::Tail||
+			AppSettings::DebugMode == DebugMode::VisibilityMask) {
 		// Calculate the radius of a bounding sphere surrounding the frustum corners
 		Float3 maxExtents;
 		Float3 minExtents;
@@ -333,13 +355,6 @@ static Float4x4 MakeGlobalShadowMatrix(const Camera& camera)
 		maxY = maxExtents.y;
 		nearClip = 0.0f;
 		farClip = 1.0f;
-
-		//////////////////////////////////////////////////////////////////////////////
-		// DEBUG
-		//std::cout << "minX:" << minX << " minY: " << minY << " maxX: " << maxX << " maxY: " << maxY << std::endl;
-		//int c = 0;
-		//////////////////////////////////////////////////////////////////////////////
-
 		shadowCamera = OrthographicCamera(minX, minY, maxX, maxY, nearClip, farClip);
 	}
 
@@ -1795,15 +1810,15 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 		this->histogramCount.SRView, this->tailBuffer.SRView,
 		this->triangleIntersect.SRView };
 	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-		nullptr};
-	this->uavsCreation = { this->headBuffer.UAView, this->tailBuffer.UAView };
+		nullptr, nullptr , nullptr , nullptr };
+	this->uavsCreation = { this->headBuffer.UAView, this->tailBuffer.UAView};
 	this->uavsClear = { this->visMapUAV, this->headBuffer.UAView,
-		this->histogramCount.UAView };
+		this->histogramCount.UAView};
 	this->uavsInterPre = { this->triangleIntersect.UAView };
 	this->uavsHistComp = { this->perTriangleBuffer.UAView,
-		this->histogramCount.UAView };
+		this->histogramCount.UAView};
 	this->uavsRendering = { this->visMapUAV };
-	this->uavsReset = { nullptr, nullptr, nullptr, nullptr };
+	this->uavsReset = { nullptr, nullptr, nullptr, nullptr, nullptr };
 }
 
 /*
