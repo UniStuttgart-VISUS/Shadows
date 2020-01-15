@@ -25,8 +25,8 @@
 // Constants
 static const float ShadowNearClip = 1.0f;
 static const bool UseComputeReduction = true;
-static const int headTextureWidth = 512;
-static const int headTextureHeight = 512;
+static const int headTextureWidth = 1024;
+static const int headTextureHeight = 1024;
 
 // Finds the approximate smallest enclosing bounding sphere for a set of points. Based on
 // "An Efficient Bounding Sphere", by Jack Ritter.
@@ -267,6 +267,20 @@ static Float4x4 MakeGlobalShadowMatrix(const Camera& camera)
 	};
 
 	Float4x4 invViewProj = Float4x4::Invert(camera.ViewProjectionMatrix());
+
+
+	if (AppSettings::DebugMode == DebugMode::ComputeShader || AppSettings::DebugMode == DebugMode::Head || AppSettings::DebugMode == DebugMode::Tail || AppSettings::DebugMode == DebugMode::VisibilityMask) {
+
+		float nearnew = AppSettings::MinCascadeDistance;
+		float farnew = AppSettings::MaxCascadeDistance * 250;
+		Float4x4 view = camera.ViewMatrix();
+		Float4x4 proj_new = XMMatrixPerspectiveFovLH(0.58904862f, 1.7777777, nearnew, farnew);
+
+		invViewProj = Float4x4::Invert(view * proj_new);
+	}
+
+
+
 	Float3 frustumCenter = 0.0f;
 	for (uint64 i = 0; i < 8; ++i)
 	{
