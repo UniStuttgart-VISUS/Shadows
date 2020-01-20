@@ -29,6 +29,7 @@ struct TailSample {
     int next;
 };
 RWStructuredBuffer<TailSample> TailBuffer : register(u1);
+RWBuffer<int> ListLengthBuffer : register(u2);
 
 [numthreads(16, 16, 1)]
 void main(uint3 DTid : SV_DispatchThreadID) {
@@ -76,7 +77,8 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	int lastID = -2;
     
 	//write index to head 
-	InterlockedExchange(HEAD[u + v * headSize.x], linear_idx, lastID);
+    InterlockedExchange(HEAD[u + v * headSize.x], linear_idx, lastID);
+    InterlockedAdd(ListLengthBuffer[u + v * headSize.x], 1);
     
     // compute linear tail pixel index
 	TailBuffer[linear_idx].ws_pos = worldSpacePosition.xyz;

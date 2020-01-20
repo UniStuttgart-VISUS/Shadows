@@ -4,6 +4,7 @@
 RWTexture2D<int> VISMASK : register(u0);
 RWBuffer<int> HEAD : register(u1);
 RWBuffer<uint> OutputHist : register(u2);
+RWBuffer<int> ListLengthBuffer : register(u3);
 
 cbuffer CSConstants : register(b1) {
 	float4x4 viewInv;
@@ -20,15 +21,17 @@ cbuffer CSConstants : register(b1) {
 
 [numthreads(16, 16, 1)]
 void main(uint3 DTid : SV_DispatchThreadID) {
-	// Reset the head texture.
+	// Reset the head and list length buffer.
 	if (all(DTid.xy < headSize.xy)) {
 		HEAD[DTid.x + DTid.y * headSize.x] = -1;
-	}
+        ListLengthBuffer[DTid.x + DTid.y * headSize.x] = 0;
+    }
 
 	// Reset the vismask and tail texture.
 	if (all(DTid.xy < headSize.zw)) {
 		VISMASK[int2(DTid.xy)] = 1;
 	}
+	
 
 	// Reset the histogram bin count.
 	if (DTid.x == 0) {

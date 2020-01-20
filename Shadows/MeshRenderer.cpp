@@ -1722,6 +1722,10 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	this->tailBuffer.Initialize(device, sizeof(Float3) + sizeof(int),
 		viewport_height * viewport_width, true);
 
+	// The linear buffer that contains the list lengths.
+	this->listLengthBuffer.Initialize(device, DXGI_FORMAT_R32_SINT, sizeof(int),
+		headTextureHeight * headTextureWidth);
+
 	// QUERY
 	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
 	queryDesc.Query = D3D11_QUERY::D3D11_QUERY_EVENT;
@@ -1811,9 +1815,9 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 		this->triangleIntersect.SRView };
 	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 		nullptr, nullptr , nullptr , nullptr };
-	this->uavsCreation = { this->headBuffer.UAView, this->tailBuffer.UAView};
+	this->uavsCreation = { this->headBuffer.UAView, this->tailBuffer.UAView, this->listLengthBuffer.UAView};
 	this->uavsClear = { this->visMapUAV, this->headBuffer.UAView,
-		this->histogramCount.UAView};
+		this->histogramCount.UAView, this->listLengthBuffer.UAView};
 	this->uavsInterPre = { this->triangleIntersect.UAView };
 	this->uavsHistComp = { this->perTriangleBuffer.UAView,
 		this->histogramCount.UAView};

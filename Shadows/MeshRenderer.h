@@ -301,6 +301,7 @@ protected:
 	ID3D11ComputeShader* izbResetCS;
 	StructuredBuffer perTriangleBuffer;
 	RWBuffer headBuffer;
+	RWBuffer listLengthBuffer;
 	RWBuffer histogramCount;
 	ID3D11BufferPtr stagingBuffer;
 	StructuredBuffer triangleIntersect;
