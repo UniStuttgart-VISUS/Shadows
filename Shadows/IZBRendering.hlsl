@@ -4,6 +4,10 @@
 StructuredBuffer<uint> Indices : register(t0);
 Buffer<float3> Vertices : register(t1);
 Buffer<int> HEAD : register(t2);
+Buffer<int2> HeadNew : register(t2);
+Buffer<int> TailNew : register(t2);
+
+
 
 struct BBoxSample {
 	uint4 bbox;
@@ -126,6 +130,38 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	if (any(uint2(xCoord, yCoord) > maxBbox)) {
 		return;
 	}
+
+	//////////////////////////////////////////////////////////////
+	//NEW
+
+	//// Get the initial value from the HEAD texture.
+	//int offset = HeadNew[xCoord + yCoord * headSize.x].x;
+	//int listlength = HeadNew[xCoord + yCoord * headSize.x].y;
+	//
+	//// Iterate over all the sample points in the izb list.
+	//float3 adjustedLightDir = 0.025f * lightDir;
+	//
+	//for (int i = 0; i < listlength; ++i) {
+	//	
+	//	//get samplepoint from new tailbuffer
+	//	float3 samplePoint_ws = TailNew[offset+i];
+	//
+	//	// Adjust samplepoint to avoid self intersection.
+	//	float3 adjustedSamplePoint_ws = samplePoint_ws + adjustedLightDir;
+	//
+	//	// Check if sample point intersects with the current triangle.
+	//	bool intersection = RayIntersectsTriangle(adjustedSamplePoint_ws,
+	//		lightDir, v0_ws.xyz, edge1, edge2, a, h, f);
+	//
+	//	if (intersection) {
+	//		// The sample point is shadowed.
+	//		int2 samplePoint = int2(value % texSize.x, floor(value / texSize.x));
+	//		VISMASK[samplePoint] = 0;
+	//	}
+	//
+	//}
+	//
+	//////////////////////////////////////////////////////////////
 
 	// Get the initial value from the HEAD texture.
 	int value = HEAD[xCoord + yCoord * headSize.x];

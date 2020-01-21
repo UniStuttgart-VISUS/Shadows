@@ -1691,6 +1691,12 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	DXCall(device->CreateComputeShader(::ComputeShaderByteCode,
 		sizeof(::ComputeShaderByteCode), nullptr, &this->izbCreationCS));
 
+	LoadShaders();
+	// Compute Shader (IZB linearization).
+	this->izbLinearizationCS = nullptr;
+	DXCall(device->CreateComputeShader(::IZBLinearizationByteCode,
+		sizeof(::IZBLinearizationByteCode), nullptr, &this->izbLinearizationCS));
+
 	// Compute Shader (compute Bounding Box per trinagle).
 	this->boundingBoxCS = nullptr;
 	DXCall(device->CreateComputeShader(::IZBBoundingBoxByteCode,
@@ -1725,6 +1731,14 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	// The linear buffer that contains the list lengths.
 	this->listLengthBuffer.Initialize(device, DXGI_FORMAT_R32_SINT, sizeof(int),
 		headTextureHeight * headTextureWidth);
+
+	// TODO
+	this->headBufferNew.Initialize(device, sizeof(int) * 4,
+		headTextureHeight * headTextureWidth, true);
+
+	// TODO
+	this->tailBufferNew.Initialize(device, sizeof(float4),
+		headTextureHeight * headTextureWidth, true);
 
 	// QUERY
 	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
@@ -1815,14 +1829,19 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 		this->triangleIntersect.SRView };
 	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
 		nullptr, nullptr , nullptr , nullptr };
-	this->uavsCreation = { this->headBuffer.UAView, this->tailBuffer.UAView, this->listLengthBuffer.UAView};
+	this->uavsCreation = { this->headBuffer.UAView, this->tailBuffer.UAView,
+		this->listLengthBuffer.UAView};
 	this->uavsClear = { this->visMapUAV, this->headBuffer.UAView,
 		this->histogramCount.UAView, this->listLengthBuffer.UAView};
 	this->uavsInterPre = { this->triangleIntersect.UAView };
+	this->uavsLin = { this->headBuffer.UAView, this->listLengthBuffer.UAView,
+		this->tailBuffer.UAView, this->tailBufferNew.UAView,
+		this->headBufferNew.UAView };
 	this->uavsHistComp = { this->perTriangleBuffer.UAView,
 		this->histogramCount.UAView};
 	this->uavsRendering = { this->visMapUAV };
-	this->uavsReset = { nullptr, nullptr, nullptr, nullptr, nullptr };
+	this->uavsReset = { nullptr, nullptr, nullptr, nullptr, nullptr,
+		nullptr, nullptr };
 }
 
 /*
@@ -1859,7 +1878,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 	this->computeShaderConstants.Data.headSize.z = visMapDesc.Width;
 	this->computeShaderConstants.Data.headSize.w = visMapDesc.Height;
 	this->computeShaderConstants.Data.vertexCount.x = scene.Indices.NumElements / 3;
-	this->computeShaderConstants.Data.vertexCount.y = 0;
+	this->computeShaderConstants.Data.vertexCount.y = headTextureHeight * headTextureWidth;
 	this->computeShaderConstants.Data.vertexCount.z = 0;
 	this->computeShaderConstants.Data.vertexCount.w = 0;
 	this->computeShaderConstants.Data.lightDir = AppSettings::LightDirection;
@@ -1926,6 +1945,33 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		ClearCSOutputs(context);
 		context->CSSetUnorderedAccessViews(0,
 			static_cast<UINT>(this->uavsCreation.size()), this->uavsReset.data(),
+			nullptr);
+	}
+
+	// Create linearized version of TAIL
+	{
+		ProfileBlock block(L"TAIL Linearization");
+
+		//Setup for dispatch
+		SetCSShader(context, this->izbLinearizationCS);
+		this->computeShaderConstants.SetCS(context, 1);
+		context->CSSetUnorderedAccessViews(0,
+			static_cast<UINT>(this->uavsLin.size()),
+			this->uavsLin.data(), nullptr);
+
+		// Dispatch the compute shader.
+		uint32 dispatchX = (headTextureHeight * headTextureWidth) / 64;
+		//uncomment for izb linearization
+		//context->Dispatch(dispatchX, 1, 1);
+
+		// wait for compute shader
+		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
+
+		// Cleanup
+		ClearCSInputs(context);
+		ClearCSOutputs(context);
+		context->CSSetUnorderedAccessViews(0,
+			static_cast<UINT>(this->uavsLin.size()), this->uavsReset.data(),
 			nullptr);
 	}
 

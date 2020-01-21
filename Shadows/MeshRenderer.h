@@ -23,6 +23,7 @@
 #include "ComputeShader.h"
 #include "IZBBoundingBox.h"
 #include "IZBIntersectionPre.h"
+#include "IZBLinearization.h"
 #include "IZBRendering.h"
 #include "IZBRenderingBig.h"
 #include "IZBResetTextures.h"
@@ -288,6 +289,7 @@ protected:
 	std::vector<ID3D11ShaderResourceView*> srvsReset;
 	std::vector<ID3D11UnorderedAccessView*> uavsClear;
 	std::vector<ID3D11UnorderedAccessView*> uavsCreation;
+	std::vector<ID3D11UnorderedAccessView*> uavsLin;
 	std::vector<ID3D11UnorderedAccessView*> uavsHistComp;
 	std::vector<ID3D11UnorderedAccessView*> uavsInterPre;
 	std::vector<ID3D11UnorderedAccessView*> uavsRendering;
@@ -296,6 +298,7 @@ protected:
 	ID3D11ComputeShader* boundingBoxCS;
 	ID3D11ComputeShader* intersectionCS;
 	ID3D11ComputeShader* izbCreationCS;
+	ID3D11ComputeShader* izbLinearizationCS;
 	ID3D11ComputeShader* izbRenderingCS;
 	ID3D11ComputeShader* izbRenderingBigCS;
 	ID3D11ComputeShader* izbResetCS;
@@ -306,4 +309,8 @@ protected:
 	ID3D11BufferPtr stagingBuffer;
 	StructuredBuffer triangleIntersect;
     StructuredBuffer tailBuffer;
+
+	StructuredBuffer headBufferNew;
+	StructuredBuffer tailBufferNew;
+
 };
