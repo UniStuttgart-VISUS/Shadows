@@ -171,12 +171,6 @@ ShaderCache/
 /Shadows/GuidStats.txt
 /Shadows/present.txt
 
-Shadows/IZBBoundingBox.h
-Shadows/ComputeShader.h
-Shadows/IZBBoundingBox.h
-Shadows/IZBRendering.h
-Shadows/IZBRenderingBig.h
-Shadows/IZBResetTextures.h
 Shadows/ComputeShader.h
 Shadows/IZBBoundingBox.h
 Shadows/IZBRendering.h
