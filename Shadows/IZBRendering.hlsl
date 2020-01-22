@@ -4,8 +4,6 @@
 StructuredBuffer<uint> Indices : register(t0);
 Buffer<float3> Vertices : register(t1);
 Buffer<int> HEAD : register(t2);
-Buffer<int2> HeadNew : register(t2);
-Buffer<int> TailNew : register(t2);
 
 
 
@@ -32,6 +30,18 @@ StructuredBuffer<IntersectSample> IntersectValues : register(t6);
 
 
 RWTexture2D<int> VISMASK : register(u0);
+
+struct TailNewSample
+{
+    float4 ws_pos;
+};
+RWStructuredBuffer<TailNewSample> TailBufferNew : register(u1);
+
+struct HeadNewSample
+{
+    int4 offsetListLen;
+};
+RWStructuredBuffer<HeadNewSample> HeadBufferNew : register(u2);
 
 
 cbuffer CSConstants : register(b1) {

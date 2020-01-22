@@ -38,7 +38,7 @@ cbuffer CSConstants : register(b1) {
 [numthreads(64, 1, 1)]
 void main(uint3 DTid : SV_DispatchThreadID) {
     // Skip unnecessary threads...
-    if (DTid.x >= vertexCount.y) {
+    if (DTid.x >= headSize.x * headSize.y) {
         return;
     }
 
@@ -47,7 +47,9 @@ void main(uint3 DTid : SV_DispatchThreadID) {
     for (uint i = 0; i < DTid.x; ++i) {
         offset = offset + ListLengthBuffer[i];
     }
-
+    
+    HeadBufferNew[DTid.x].offsetListLen = int4(offset, ListLengthBuffer[DTid.x], 0, 0);
+    /*
     //fill new tailbuffer
     int next = HEAD[DTid.x];
     for (int j = 0; j < ListLengthBuffer[DTid.x]; ++j) {
@@ -57,4 +59,5 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 
     //fill new headbuffer
     HeadBufferNew[DTid.x].offsetListLen = int4(offset, ListLengthBuffer[DTid.x], 0, 0);
+    */
 }

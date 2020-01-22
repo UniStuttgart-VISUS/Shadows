@@ -1691,7 +1691,6 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	DXCall(device->CreateComputeShader(::ComputeShaderByteCode,
 		sizeof(::ComputeShaderByteCode), nullptr, &this->izbCreationCS));
 
-	LoadShaders();
 	// Compute Shader (IZB linearization).
 	this->izbLinearizationCS = nullptr;
 	DXCall(device->CreateComputeShader(::IZBLinearizationByteCode,
@@ -1738,7 +1737,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 
 	// TODO
 	this->tailBufferNew.Initialize(device, sizeof(float4),
-		headTextureHeight * headTextureWidth, true);
+		viewport_height * viewport_width, true);
 
 	// QUERY
 	ZeroMemory(&queryDesc, sizeof(D3D11_QUERY_DESC));
@@ -1839,7 +1838,8 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 		this->headBufferNew.UAView };
 	this->uavsHistComp = { this->perTriangleBuffer.UAView,
 		this->histogramCount.UAView};
-	this->uavsRendering = { this->visMapUAV };
+	this->uavsRendering = { this->visMapUAV, this->tailBufferNew.UAView,
+		this->headBufferNew.UAView};
 	this->uavsReset = { nullptr, nullptr, nullptr, nullptr, nullptr,
 		nullptr, nullptr };
 }
