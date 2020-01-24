@@ -32,7 +32,6 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 		VISMASK[int2(DTid.xy)] = 1;
 	}
 	
-
 	// Reset the histogram bin count.
 	if (DTid.x == 0) {
 		OutputHist[0] = 0;

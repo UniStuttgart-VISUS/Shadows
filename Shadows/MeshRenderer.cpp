@@ -1817,8 +1817,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
         DXCall(device->CreateBuffer(&desc, nullptr, &this->stagingBuffer));
     }
 
-	// Create the vector that will contain the SRVs and the vector that will create
-	// the UAVs.
+	// Create the vectors that will contain the SRVs.
 	this->srvsInterPre = { scene.Indices.SRView, this->vertexBufferSRV };
 	this->srvsHistComp = { scene.Indices.SRView, this->vertexBufferSRV,
 		this->headBuffer.SRView };
@@ -1826,8 +1825,9 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 		this->headBuffer.SRView, this->perTriangleBuffer.SRView,
 		this->histogramCount.SRView, this->tailBuffer.SRView,
 		this->triangleIntersect.SRView };
-	this->srvsReset = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-		nullptr, nullptr , nullptr , nullptr };
+	this->srvsReset = std::vector<ID3D11ShaderResourceView*>(10, nullptr);
+
+	// Create the vectors that will contain the UAVs.
 	this->uavsCreation = { this->headBuffer.UAView, this->tailBuffer.UAView,
 		this->listLengthBuffer.UAView};
 	this->uavsClear = { this->visMapUAV, this->headBuffer.UAView,
@@ -1840,8 +1840,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 		this->histogramCount.UAView};
 	this->uavsRendering = { this->visMapUAV, this->tailBufferNew.UAView,
 		this->headBufferNew.UAView};
-	this->uavsReset = { nullptr, nullptr, nullptr, nullptr, nullptr,
-		nullptr, nullptr };
+	this->uavsReset = std::vector<ID3D11UnorderedAccessView*>(10, nullptr);
 }
 
 /*
@@ -1878,7 +1877,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 	this->computeShaderConstants.Data.headSize.z = visMapDesc.Width;
 	this->computeShaderConstants.Data.headSize.w = visMapDesc.Height;
 	this->computeShaderConstants.Data.vertexCount.x = scene.Indices.NumElements / 3;
-	this->computeShaderConstants.Data.vertexCount.y = headTextureHeight * headTextureWidth;
+	this->computeShaderConstants.Data.vertexCount.y = 0;
 	this->computeShaderConstants.Data.vertexCount.z = 0;
 	this->computeShaderConstants.Data.vertexCount.w = 0;
 	this->computeShaderConstants.Data.lightDir = AppSettings::LightDirection;
@@ -1962,7 +1961,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		// Dispatch the compute shader.
 		uint32 dispatchX = (headTextureHeight * headTextureWidth) / 64;
 		//uncomment for izb linearization
-		//context->Dispatch(dispatchX, 1, 1);
+		context->Dispatch(dispatchX, 1, 1);
 
 		// wait for compute shader
 		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
@@ -1975,6 +1974,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			nullptr);
 	}
 
+#if 0
 	// Start the BoundingBox computataion.
 	std::array<uint32, histElementCount> counts;
 	counts.fill(0u);
@@ -2119,6 +2119,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			static_cast<UINT>(this->uavsRendering.size()), this->uavsReset.data(),
 			nullptr);
 	}
+#endif
 
 	// Select the return value.
 	return this->visMap;
