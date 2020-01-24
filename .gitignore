@@ -176,3 +176,4 @@ Shadows/IZBBoundingBox.h
 Shadows/IZBRendering.h
 Shadows/IZBRenderingBig.h
 Shadows/IZBResetTextures.h
+Shadows/IZBLinearization.h
