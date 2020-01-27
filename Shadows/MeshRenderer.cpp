@@ -29,6 +29,7 @@ static const int headTextureWidth = 1024;
 static const int headTextureHeight = 1024;
 static const size_t ptdElementCount = 5;
 static const size_t histElementCount = 7;
+static const size_t lengthsCount = headTextureHeight * headTextureWidth;
 static const std::array<uint32, histElementCount> bboxSizes = {
 	2,
 	4,
@@ -1731,6 +1732,10 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	this->listLengthBuffer.Initialize(device, DXGI_FORMAT_R32_SINT, sizeof(int),
 		headTextureHeight * headTextureWidth);
 
+	// The linear buffer that contains the offsets.
+	this->offsetBuffer.Initialize(device, DXGI_FORMAT_R32_SINT, sizeof(int),
+		headTextureHeight * headTextureWidth);
+
 	// TODO
 	this->headBufferNew.Initialize(device, sizeof(int) * 4,
 		headTextureHeight * headTextureWidth, true);
@@ -1817,6 +1822,16 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
         DXCall(device->CreateBuffer(&desc, nullptr, &this->stagingBuffer));
     }
 
+	{
+		// Get the description of the list length data buffer.
+		D3D11_BUFFER_DESC desc;
+		this->listLengthBuffer.Buffer->GetDesc(&desc);
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+		// Create the staging buffer.
+		DXCall(device->CreateBuffer(&desc, nullptr, &this->stagingBufferBig));
+	}
+
 	// Create the vectors that will contain the SRVs.
 	this->srvsInterPre = { scene.Indices.SRView, this->vertexBufferSRV };
 	this->srvsHistComp = { scene.Indices.SRView, this->vertexBufferSRV,
@@ -1831,11 +1846,11 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	this->uavsCreation = { this->headBuffer.UAView, this->tailBuffer.UAView,
 		this->listLengthBuffer.UAView};
 	this->uavsClear = { this->visMapUAV, this->headBuffer.UAView,
-		this->histogramCount.UAView, this->listLengthBuffer.UAView};
+		this->histogramCount.UAView, this->listLengthBuffer.UAView, this->offsetBuffer.UAView};
 	this->uavsInterPre = { this->triangleIntersect.UAView };
 	this->uavsLin = { this->headBuffer.UAView, this->listLengthBuffer.UAView,
 		this->tailBuffer.UAView, this->tailBufferNew.UAView,
-		this->headBufferNew.UAView };
+		this->headBufferNew.UAView, this->offsetBuffer.UAView };
 	this->uavsHistComp = { this->perTriangleBuffer.UAView,
 		this->histogramCount.UAView};
 	this->uavsRendering = { this->visMapUAV, this->tailBufferNew.UAView,
@@ -1939,12 +1954,42 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		// wait for compute shader
 		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
 
+		// Copy the list lengths data to the staging buffer.
+		context->CopyResource(this->stagingBufferBig, this->listLengthBuffer.Buffer);
+
 		// Cleanup
 		ClearCSInputs(context);
 		ClearCSOutputs(context);
 		context->CSSetUnorderedAccessViews(0,
 			static_cast<UINT>(this->uavsCreation.size()), this->uavsReset.data(),
 			nullptr);
+	}
+
+	std::vector<int> listLengths;
+	listLengths.resize(lengthsCount);
+
+	{
+		ProfileBlock(L"Download List Lengths");
+		// Download the histogram count data.
+		D3D11_MAPPED_SUBRESOURCE subRes;
+		DXCall(context->Map(this->stagingBufferBig, 0, D3D11_MAP_READ, 0, &subRes));
+		::memcpy(listLengths.data(), subRes.pData, sizeof(uint32) * lengthsCount);
+
+		// calculate offsets
+		size_t offset = 0;
+		std::vector<int> offsets;
+		offsets.resize(lengthsCount);
+		for (size_t i = 0; i < listLengths.size(); i++)
+		{
+			offsets.at(i) = offset;
+			offset = offset + listLengths.at(i);
+		}
+
+		::memcpy(subRes.pData, offsets.data(), sizeof(uint32) * lengthsCount);
+		// unmap the staging buffer
+		context->Unmap(this->stagingBufferBig, 0);
+
+		context->CopyResource(offsetBuffer.Buffer, stagingBufferBig);
 	}
 
 	// Create linearized version of TAIL
@@ -1966,6 +2011,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		// wait for compute shader
 		while ((context->GetData(queryObj, nullptr, 0, 0)) == S_FALSE);
 
+
 		// Cleanup
 		ClearCSInputs(context);
 		ClearCSOutputs(context);
@@ -1973,8 +2019,9 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			static_cast<UINT>(this->uavsLin.size()), this->uavsReset.data(),
 			nullptr);
 	}
+	
 
-#if 0
+
 	// Start the BoundingBox computataion.
 	std::array<uint32, histElementCount> counts;
 	counts.fill(0u);
@@ -2119,7 +2166,6 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			static_cast<UINT>(this->uavsRendering.size()), this->uavsReset.data(),
 			nullptr);
 	}
-#endif
 
 	// Select the return value.
 	return this->visMap;

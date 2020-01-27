@@ -20,6 +20,8 @@ struct HeadNewSample {
 };
 RWStructuredBuffer<HeadNewSample> HeadBufferNew : register(u4);
 
+RWBuffer<int> OffsetBuffer : register(u5);
+
 
 cbuffer CSConstants : register(b1) {
     float4x4 viewInv;
@@ -41,15 +43,17 @@ void main(uint3 DTid : SV_DispatchThreadID) {
     if (DTid.x >= headSize.x * headSize.y) {
         return;
     }
+    
+    // early return when list length is 0
+    if (ListLengthBuffer[DTid.x] == 0)
+    {
+        return;
+    }
 
     //calculate offset
-    int offset = 0;
-    for (uint i = 0; i < DTid.x; ++i) {
-        offset = offset + ListLengthBuffer[i];
-    }
+    int offset = OffsetBuffer[DTid.x];
     
     HeadBufferNew[DTid.x].offsetListLen = int4(offset, ListLengthBuffer[DTid.x], 0, 0);
-    /*
     //fill new tailbuffer
     int next = HEAD[DTid.x];
     for (int j = 0; j < ListLengthBuffer[DTid.x]; ++j) {
@@ -59,5 +63,4 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 
     //fill new headbuffer
     HeadBufferNew[DTid.x].offsetListLen = int4(offset, ListLengthBuffer[DTid.x], 0, 0);
-    */
 }

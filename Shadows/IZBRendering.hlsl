@@ -144,48 +144,17 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	//////////////////////////////////////////////////////////////
 	//NEW
 
-	//// Get the initial value from the HEAD texture.
-	//int offset = HeadNew[xCoord + yCoord * headSize.x].x;
-	//int listlength = HeadNew[xCoord + yCoord * headSize.x].y;
-	//
-	//// Iterate over all the sample points in the izb list.
-	//float3 adjustedLightDir = 0.025f * lightDir;
-	//
-	//for (int i = 0; i < listlength; ++i) {
-	//	
-	//	//get samplepoint from new tailbuffer
-	//	float3 samplePoint_ws = TailNew[offset+i];
-	//
-	//	// Adjust samplepoint to avoid self intersection.
-	//	float3 adjustedSamplePoint_ws = samplePoint_ws + adjustedLightDir;
-	//
-	//	// Check if sample point intersects with the current triangle.
-	//	bool intersection = RayIntersectsTriangle(adjustedSamplePoint_ws,
-	//		lightDir, v0_ws.xyz, edge1, edge2, a, h, f);
-	//
-	//	if (intersection) {
-	//		// The sample point is shadowed.
-	//		int2 samplePoint = int2(value % texSize.x, floor(value / texSize.x));
-	//		VISMASK[samplePoint] = 0;
-	//	}
-	//
-	//}
-	//
-	//////////////////////////////////////////////////////////////
-
 	// Get the initial value from the HEAD texture.
-	int value = HEAD[xCoord + yCoord * headSize.x];
-
+	int offset = HeadBufferNew[xCoord + yCoord * headSize.x].offsetListLen.x;
+	int listlength = HeadBufferNew[xCoord + yCoord * headSize.x].offsetListLen.y;
+	
 	// Iterate over all the sample points in the izb list.
 	float3 adjustedLightDir = 0.025f * lightDir;
-	while (value != -1) {
-		// Get the sample point.
-		int2 samplePoint = int2(value % texSize.x, floor(value / texSize.x) );
-	
-		// Get next sample point from the TAIL texture.
-        TailSample s = TailBuffer[value];
-        float3 samplePoint_ws = s.ws_pos;
-        value = s.next;
+    int value = HEAD[xCoord + yCoord * headSize.x];
+	for (int i = 0; i < listlength; ++i) {
+		
+		//get samplepoint from new tailbuffer
+		float3 samplePoint_ws = TailBufferNew[offset+i].ws_pos.xyz;
 	
 		// Adjust samplepoint to avoid self intersection.
 		float3 adjustedSamplePoint_ws = samplePoint_ws + adjustedLightDir;
@@ -193,9 +162,40 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 		// Check if sample point intersects with the current triangle.
 		bool intersection = RayIntersectsTriangle(adjustedSamplePoint_ws,
 			lightDir, v0_ws.xyz, edge1, edge2, a, h, f);
+	
 		if (intersection) {
 			// The sample point is shadowed.
+			int2 samplePoint = int2(value % texSize.x, floor(value / texSize.x));
 			VISMASK[samplePoint] = 0;
 		}
+	
 	}
+	
+	////////////////////////////////////////////////////////////
+
+	//// Get the initial value from the HEAD texture.
+	//int value = HEAD[xCoord + yCoord * headSize.x];
+	//
+	//// Iterate over all the sample points in the izb list.
+	//float3 adjustedLightDir = 0.025f * lightDir;
+	//while (value != -1) {
+	//	// Get the sample point.
+	//	int2 samplePoint = int2(value % texSize.x, floor(value / texSize.x) );
+	//
+	//	// Get next sample point from the TAIL texture.
+    //    TailSample s = TailBuffer[value];
+    //    float3 samplePoint_ws = s.ws_pos;
+    //    value = s.next;
+	//
+	//	// Adjust samplepoint to avoid self intersection.
+	//	float3 adjustedSamplePoint_ws = samplePoint_ws + adjustedLightDir;
+	//
+	//	// Check if sample point intersects with the current triangle.
+	//	bool intersection = RayIntersectsTriangle(adjustedSamplePoint_ws,
+	//		lightDir, v0_ws.xyz, edge1, edge2, a, h, f);
+	//	if (intersection) {
+	//		// The sample point is shadowed.
+	//		VISMASK[samplePoint] = 0;
+	//	}
+	//}
 }

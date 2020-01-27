@@ -305,8 +305,10 @@ protected:
 	StructuredBuffer perTriangleBuffer;
 	RWBuffer headBuffer;
 	RWBuffer listLengthBuffer;
+	RWBuffer offsetBuffer;
 	RWBuffer histogramCount;
 	ID3D11BufferPtr stagingBuffer;
+	ID3D11BufferPtr stagingBufferBig;
 	StructuredBuffer triangleIntersect;
     StructuredBuffer tailBuffer;
 
