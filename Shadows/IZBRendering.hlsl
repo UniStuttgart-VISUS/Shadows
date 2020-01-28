@@ -33,7 +33,8 @@ RWTexture2D<int> VISMASK : register(u0);
 
 struct TailNewSample
 {
-    float4 ws_pos;
+    float3 ws_pos;
+    int viewSpacePos;
 };
 RWStructuredBuffer<TailNewSample> TailBufferNew : register(u1);
 
@@ -150,8 +151,10 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 	
 	// Iterate over all the sample points in the izb list.
 	float3 adjustedLightDir = 0.025f * lightDir;
-    int value = HEAD[xCoord + yCoord * headSize.x];
+
 	for (int i = 0; i < listlength; ++i) {
+        
+        int value = TailBufferNew[offset+i].viewSpacePos;
 		
 		//get samplepoint from new tailbuffer
 		float3 samplePoint_ws = TailBufferNew[offset+i].ws_pos.xyz;
@@ -168,8 +171,9 @@ void main(uint3 DTid : SV_DispatchThreadID) {
 			int2 samplePoint = int2(value % texSize.x, floor(value / texSize.x));
 			VISMASK[samplePoint] = 0;
 		}
-	
-	}
+        
+
+    }
 	
 	////////////////////////////////////////////////////////////
 

@@ -11,7 +11,8 @@ struct TailSample {
 RWStructuredBuffer<TailSample> TailBuffer : register(u2);
 
 struct TailNewSample {
-    float4 ws_pos;
+    float3 ws_pos;
+    int viewSpacePos;
 };
 RWStructuredBuffer<TailNewSample> TailBufferNew : register(u3);
 
@@ -57,10 +58,9 @@ void main(uint3 DTid : SV_DispatchThreadID) {
     //fill new tailbuffer
     int next = HEAD[DTid.x];
     for (int j = 0; j < ListLengthBuffer[DTid.x]; ++j) {
-        TailBufferNew[offset + j].ws_pos = float4(TailBuffer[next].ws_pos, 0.0);
+        TailBufferNew[offset + j].ws_pos = float3(TailBuffer[next].ws_pos);
+        TailBufferNew[offset + j].viewSpacePos = next;
         next = TailBuffer[next].next;
     }
 
-    //fill new headbuffer
-    HeadBufferNew[DTid.x].offsetListLen = int4(offset, ListLengthBuffer[DTid.x], 0, 0);
 }

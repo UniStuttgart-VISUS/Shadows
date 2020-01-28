@@ -1973,7 +1973,7 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		// Download the histogram count data.
 		D3D11_MAPPED_SUBRESOURCE subRes;
 		DXCall(context->Map(this->stagingBufferBig, 0, D3D11_MAP_READ, 0, &subRes));
-		::memcpy(listLengths.data(), subRes.pData, sizeof(uint32) * lengthsCount);
+		::memcpy(listLengths.data(), subRes.pData, subRes.DepthPitch);
 
 		// calculate offsets
 		size_t offset = 0;
@@ -1985,8 +1985,9 @@ ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 			offset = offset + listLengths.at(i);
 		}
 
-		::memcpy(subRes.pData, offsets.data(), sizeof(uint32) * lengthsCount);
+		::memcpy(subRes.pData, offsets.data(), subRes.DepthPitch);
 		// unmap the staging buffer
+		context->UpdateSubresource(stagingBufferBig, 0, NULL, offsets.data(), subRes.RowPitch, subRes.DepthPitch);
 		context->Unmap(this->stagingBufferBig, 0);
 
 		context->CopyResource(offsetBuffer.Buffer, stagingBufferBig);
