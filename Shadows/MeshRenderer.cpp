@@ -1797,7 +1797,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	visMapSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	visMapSRVDesc.Texture2D.MostDetailedMip = 0;
 	visMapSRVDesc.Texture2D.MipLevels = 1;
-	DXCall(device->CreateShaderResourceView(this->visMapCopy, &visMapSRVDesc, &visMapSRV));
+	DXCall(device->CreateShaderResourceView(this->visMap, &visMapSRVDesc, &visMapSRV));
 
 	// Create UAV for Vis Map.
 	D3D11_UNORDERED_ACCESS_VIEW_DESC visMapUAVDesc;
