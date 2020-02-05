@@ -1848,7 +1848,9 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	this->srvsRendering = { scene.Indices.SRView, this->vertexBufferSRV,
 		this->headBuffer.SRView, this->perTriangleBuffer.SRView,
 		this->histogramCount.SRView, this->tailBuffer.SRView,
-		this->triangleIntersect.SRView };
+		this->triangleIntersect.SRView,
+		this->tailBufferNew.SRView,
+		this->headBufferNew.SRView };
 	this->srvsReset = std::vector<ID3D11ShaderResourceView*>(10, nullptr);
 
 	// Create the vectors that will contain the UAVs.
@@ -1862,8 +1864,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 		this->headBufferNew.UAView, this->offsetBuffer.UAView };
 	this->uavsHistComp = { this->perTriangleBuffer.UAView,
 		this->histogramCount.UAView};
-	this->uavsRendering = { this->visMapUAV, this->tailBufferNew.UAView,
-		this->headBufferNew.UAView};
+	this->uavsRendering = { this->visMapUAV };
 	this->uavsReset = std::vector<ID3D11UnorderedAccessView*>(10, nullptr);
 
 
