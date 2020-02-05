@@ -41,6 +41,7 @@ cbuffer PSConstants : register(b0)
 Texture2D DiffuseMap : register(t0);
 Texture2DArray ShadowMap : register(t1);
 Texture2D<float> RandomRotations : register(t2);
+Texture2D<int> VisMap : register(t3);
 
 SamplerState AnisoSampler : register(s0);
 SamplerComparisonState ShadowSampler : register(s1);
@@ -820,6 +821,7 @@ float4 PS(in PSInput input) : SV_Target0
                                                normalWS, screenPos);
 
 	float3 lighting = 0.0f;
+    shadowVisibility = float3(VisMap[screenPos].rrr);
 
     // Add in the primary directional light
     lighting += nDotL * LightColor * diffuseAlbedo * (1.0f / 3.14159f) * shadowVisibility;

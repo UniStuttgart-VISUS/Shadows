@@ -707,8 +707,6 @@ void MeshRenderer::Initialize(ID3D11Device* device, ID3D11DeviceContext* context
 	cascadePlanesBuffer.Initialize(device, sizeof(Float4), NumCascades * 6, true);
 
 	CreateShadowMaps();
-
-
 }
 
 // Performs frustum/sphere intersection tests for all MeshPart's
@@ -1108,8 +1106,9 @@ void MeshRenderer::Render(ID3D11DeviceContext* context, const Camera& camera, co
 		RenderModel(context, camera, characterWorld, character);
 	}
 
-	ID3D11ShaderResourceView* nullSRVs[3] = { nullptr };
-	context->PSSetShaderResources(0, 3, nullSRVs);
+
+	ID3D11ShaderResourceView* nullSRVs[4] = { nullptr };
+	context->PSSetShaderResources(0, 4, nullSRVs);
 }
 
 // Renders one of the models, either the scene or the character
@@ -1178,11 +1177,12 @@ void MeshRenderer::RenderModel(ID3D11DeviceContext* context, const Camera& camer
 				const MeshMaterial& material = model->Materials()[part.MaterialIdx];
 
 				// Set the textures
-				ID3D11ShaderResourceView* psTextures[3] =
+				ID3D11ShaderResourceView* psTextures[4] =
 				{
 					material.DiffuseMap,
 					shadowMap.SRView,
 					randomRotations,
+					visMapSRV,
 				};
 
 				if (psTextures[0] == nullptr)
@@ -1191,7 +1191,7 @@ void MeshRenderer::RenderModel(ID3D11DeviceContext* context, const Camera& camer
 				if (AppSettings::UseFilterableShadows())
 					psTextures[1] = varianceShadowMap.SRView;
 
-				context->PSSetShaderResources(0, 3, psTextures);
+				context->PSSetShaderResources(0, 4, psTextures);
 				context->DrawIndexed(part.IndexCount, part.IndexStart, 0);
 			}
 		}
@@ -1791,6 +1791,14 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	visMapDesc.Usage = D3D11_USAGE_DEFAULT;
 	DXCall(device->CreateTexture2D(&visMapDesc, nullptr, &this->visMap));
 
+	// create SRV for visMap
+	D3D11_SHADER_RESOURCE_VIEW_DESC visMapSRVDesc;
+	visMapSRVDesc.Format = DXGI_FORMAT_R32_SINT;
+	visMapSRVDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	visMapSRVDesc.Texture2D.MostDetailedMip = 0;
+	visMapSRVDesc.Texture2D.MipLevels = 1;
+	DXCall(device->CreateShaderResourceView(this->visMapCopy, &visMapSRVDesc, &visMapSRV));
+
 	// Create UAV for Vis Map.
 	D3D11_UNORDERED_ACCESS_VIEW_DESC visMapUAVDesc;
 	ZeroMemory(&visMapUAVDesc, sizeof(visMapUAVDesc));
@@ -1832,6 +1840,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 		DXCall(device->CreateBuffer(&desc, nullptr, &this->stagingBufferBig));
 	}
 
+
 	// Create the vectors that will contain the SRVs.
 	this->srvsInterPre = { scene.Indices.SRView, this->vertexBufferSRV };
 	this->srvsHistComp = { scene.Indices.SRView, this->vertexBufferSRV,
@@ -1856,6 +1865,9 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 	this->uavsRendering = { this->visMapUAV, this->tailBufferNew.UAView,
 		this->headBufferNew.UAView};
 	this->uavsReset = std::vector<ID3D11UnorderedAccessView*>(10, nullptr);
+
+
+
 }
 
 /*
@@ -1864,6 +1876,7 @@ void MeshRenderer::InitializeIZB(ID3D11Device* device, ID3D11DeviceContext* cont
 ID3D11Texture2D* MeshRenderer::RenderIZB(ID3D11DeviceContext* context,
 		DepthStencilBuffer& depthBuffer, const Camera& camera,
 		const Float4x4& meshWorld, const Float4x4& characterWorld) {
+
 	// Get the size of the tail texture and visMap.
 	D3D11_TEXTURE2D_DESC visMapDesc;
 	this->visMap->GetDesc(&visMapDesc);

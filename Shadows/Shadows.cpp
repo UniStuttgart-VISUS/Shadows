@@ -233,6 +233,12 @@ void ShadowsApp::Render(const Timer& timer)
 
 	AppSettings::UpdateCBuffer(context);
 
+	Float4x4 meshWorld = Float4x4::ScaleMatrix(MeshScales[AppSettings::CurrentScene]);
+	Float4x4 characterWorld = Float4x4::ScaleMatrix(CharacterScale);
+	Float4x4 characterOrientation = Quaternion::ToFloat4x4(AppSettings::CharacterOrientation);
+	characterWorld = characterWorld * characterOrientation;
+	tex = meshRenderer.RenderIZB(context, depthBuffer, camera, meshWorld, characterWorld);
+
 	RenderMainPass();
 
 	if (colorTarget.MultiSamples > 1)
@@ -269,8 +275,9 @@ void ShadowsApp::Render(const Timer& timer)
 		Float4x4 characterWorld = Float4x4::ScaleMatrix(CharacterScale);
 		Float4x4 characterOrientation = Quaternion::ToFloat4x4(AppSettings::CharacterOrientation);
 		characterWorld = characterWorld * characterOrientation;
-		ID3D11Texture2D* texture = meshRenderer.RenderIZB(context, depthBuffer, camera, meshWorld, characterWorld);
-		postProcessor.VisualizeTexture(*texture, deviceManager.BackBuffer());
+		//meshRenderer.RenderIZB(context, depthBuffer, camera, meshWorld, characterWorld);
+		//ID3D11Texture2D* texture = meshRenderer.RenderIZB(context, depthBuffer, camera, meshWorld, characterWorld);
+		postProcessor.VisualizeTexture(*tex, deviceManager.BackBuffer());
 	}	
 	
 	ID3D11RenderTargetView* renderTargets[1] = { deviceManager.BackBuffer() };

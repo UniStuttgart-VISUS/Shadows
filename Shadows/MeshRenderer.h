@@ -277,6 +277,8 @@ protected:
 
 	ID3D11ShaderResourceView* vertexBufferSRV;
 	ID3D11ShaderResourceView* worldPosSRV;
+	ID3D11ShaderResourceView* visMapSRV;
+
 
 	ID3D11Texture2D* visMap;
 	ID3D11Buffer* vertexBuffer;

@@ -42,6 +42,7 @@ protected:
     RenderTarget2D colorTarget;
     RenderTarget2D resolveTarget;
 	SimpleVertexBuffer vertexBuffer;
+    ID3D11Texture2D* tex;
 
     // Model
     Model models[uint64(Scene::NumValues)];
