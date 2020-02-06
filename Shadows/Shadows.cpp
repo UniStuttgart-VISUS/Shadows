@@ -237,7 +237,10 @@ void ShadowsApp::Render(const Timer& timer)
 	Float4x4 characterWorld = Float4x4::ScaleMatrix(CharacterScale);
 	Float4x4 characterOrientation = Quaternion::ToFloat4x4(AppSettings::CharacterOrientation);
 	characterWorld = characterWorld * characterOrientation;
-	tex = meshRenderer.RenderIZB(context, depthBuffer, camera, meshWorld, characterWorld);
+
+    if (AppSettings::ShadowMode == ShadowMode::IZBShadows){
+	    tex = meshRenderer.RenderIZB(context, depthBuffer, camera, meshWorld, characterWorld);
+    }
 
 	RenderMainPass();
 
@@ -269,15 +272,8 @@ void ShadowsApp::Render(const Timer& timer)
 	if (AppSettings::DebugMode == DebugMode::Position) {
 		postProcessor.VisualizePosition(depthBuffer, deviceManager.BackBuffer());
 	}
-	if (AppSettings::DebugMode == DebugMode::Head || AppSettings::DebugMode == DebugMode::Tail || AppSettings::DebugMode == DebugMode::ComputeShader || AppSettings::DebugMode == DebugMode::VisibilityMask
-		) {
-		Float4x4 meshWorld = Float4x4::ScaleMatrix(MeshScales[AppSettings::CurrentScene]);
-		Float4x4 characterWorld = Float4x4::ScaleMatrix(CharacterScale);
-		Float4x4 characterOrientation = Quaternion::ToFloat4x4(AppSettings::CharacterOrientation);
-		characterWorld = characterWorld * characterOrientation;
-		//meshRenderer.RenderIZB(context, depthBuffer, camera, meshWorld, characterWorld);
-		//ID3D11Texture2D* texture = meshRenderer.RenderIZB(context, depthBuffer, camera, meshWorld, characterWorld);
-		postProcessor.VisualizeTexture(*tex, deviceManager.BackBuffer());
+	if (AppSettings::DebugMode == DebugMode::VisibilityMask && AppSettings::ShadowMode == ShadowMode::IZBShadows) {
+	    postProcessor.VisualizeTexture(*tex, deviceManager.BackBuffer());
 	}	
 	
 	ID3D11RenderTargetView* renderTargets[1] = { deviceManager.BackBuffer() };
@@ -353,7 +349,6 @@ void ShadowsApp::RenderMainPass()
 
 
 	if (AppSettings::DebugMode == DebugMode::None) {
-
 		if (AppSettings::AutoComputeDepthBounds)
 			meshRenderer.ReduceDepth(context, depthBuffer.SRView, camera);
 
@@ -372,7 +367,8 @@ void ShadowsApp::RenderMainPass()
 
 		skybox.RenderSky(context, lightDir, true, camera.ViewMatrix(), camera.ProjectionMatrix());
 
-	} else if (AppSettings::DebugMode == DebugMode::ComputeShader ||
+	} 
+    else if (AppSettings::DebugMode == DebugMode::ComputeShader ||  
 			AppSettings::DebugMode == DebugMode::Head ||
 			AppSettings::DebugMode == DebugMode::Tail ||
 			AppSettings::DebugMode == DebugMode::VisibilityMask) {

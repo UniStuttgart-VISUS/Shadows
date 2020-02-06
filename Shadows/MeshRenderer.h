@@ -208,6 +208,7 @@ protected:
 
 		Float4Align Float4 CascadeOffsets[NumCascades];
 		Float4Align Float4 CascadeScales[NumCascades];
+        Float4Align uint useIZB;
 	};
 
 	struct VSMConstants

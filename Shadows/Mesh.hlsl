@@ -33,6 +33,7 @@ cbuffer PSConstants : register(b0)
 	float4 CascadeSplits;
     float4 CascadeOffsets[NumCascades];
     float4 CascadeScales[NumCascades];
+    uint useIZB;
 }
 
 //=================================================================================================
@@ -821,7 +822,9 @@ float4 PS(in PSInput input) : SV_Target0
                                                normalWS, screenPos);
 
 	float3 lighting = 0.0f;
-    shadowVisibility = float3(VisMap[screenPos].rrr);
+    if(useIZB == 1){
+        shadowVisibility = float3(VisMap[screenPos].rrr);
+    }
 
     // Add in the primary directional light
     lighting += nDotL * LightColor * diffuseAlbedo * (1.0f / 3.14159f) * shadowVisibility;

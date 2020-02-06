@@ -280,10 +280,7 @@ static Float4x4 MakeGlobalShadowMatrix(const Camera& camera)
 
 	Float4x4 invViewProj = Float4x4::Invert(camera.ViewProjectionMatrix());
 
-	if ((AppSettings::DebugMode == DebugMode::ComputeShader ||
-			AppSettings::DebugMode == DebugMode::Head ||
-			AppSettings::DebugMode == DebugMode::Tail ||
-			AppSettings::DebugMode == DebugMode::VisibilityMask) &&
+	if (AppSettings::ShadowMode == ShadowMode::IZBShadows &&
 			AppSettings::AutoComputeDepthBounds) {
 		bool changeFrustrum = !((AppSettings::MinCascadeDistance == 0.0) &&
 			(AppSettings::MaxCascadeDistance == 0.0));
@@ -329,10 +326,7 @@ static Float4x4 MakeGlobalShadowMatrix(const Camera& camera)
 		0.5f, 0.0f, 1.0f);
 
 	// TODO: new orthographic camera with dynamic values
-	if (AppSettings::DebugMode == DebugMode::ComputeShader ||
-			AppSettings::DebugMode == DebugMode::Head ||
-			AppSettings::DebugMode == DebugMode::Tail||
-			AppSettings::DebugMode == DebugMode::VisibilityMask) {
+	if (AppSettings::ShadowMode == ShadowMode::IZBShadows) {
 		// Calculate the radius of a bounding sphere surrounding the frustum corners
 		Float3 maxExtents;
 		Float3 minExtents;
@@ -1122,6 +1116,7 @@ void MeshRenderer::RenderModel(ID3D11DeviceContext* context, const Camera& camer
 	meshVSConstants.SetVS(context, 0);
 
 	meshPSConstants.Data.CameraPosWS = camera.Position();
+    meshPSConstants.Data.useIZB = static_cast<uint>(AppSettings::ShadowMode == ShadowMode::IZBShadows);
 	meshPSConstants.ApplyChanges(context);
 	meshPSConstants.SetPS(context, 0);
 
