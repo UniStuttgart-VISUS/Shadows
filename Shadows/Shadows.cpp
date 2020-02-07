@@ -233,15 +233,6 @@ void ShadowsApp::Render(const Timer& timer)
 
 	AppSettings::UpdateCBuffer(context);
 
-	Float4x4 meshWorld = Float4x4::ScaleMatrix(MeshScales[AppSettings::CurrentScene]);
-	Float4x4 characterWorld = Float4x4::ScaleMatrix(CharacterScale);
-	Float4x4 characterOrientation = Quaternion::ToFloat4x4(AppSettings::CharacterOrientation);
-	characterWorld = characterWorld * characterOrientation;
-
-    if (AppSettings::ShadowMode == ShadowMode::IZBShadows){
-	    tex = meshRenderer.RenderIZB(context, depthBuffer, camera, meshWorld, characterWorld);
-    }
-
 	RenderMainPass();
 
 	if (colorTarget.MultiSamples > 1)
@@ -363,6 +354,13 @@ void ShadowsApp::RenderMainPass()
 		context->RSSetViewports(1, &vp);
 
 		Float3 lightDir = AppSettings::LightDirection;
+
+		if (AppSettings::ShadowMode == ShadowMode::IZBShadows) {
+			context->OMSetRenderTargets(1, renderTargets, NULL);
+			tex = meshRenderer.RenderIZB(context, depthBuffer, camera, meshWorld, characterWorld);
+			context->OMSetRenderTargets(1, renderTargets, ds);
+		}
+
 		meshRenderer.Render(context, camera, meshWorld, characterWorld);
 
 		skybox.RenderSky(context, lightDir, true, camera.ViewMatrix(), camera.ProjectionMatrix());
